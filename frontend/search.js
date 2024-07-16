@@ -1,4 +1,4 @@
-import 'axios'
+import axios from 'redaxios'
 
 const titleize = str => {
   return str.split(' ').map(word => {

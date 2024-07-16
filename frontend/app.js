@@ -11,6 +11,6 @@ const router = createRouter({
     { path: '/manga/:manga/:chapter', component: manga }
   ]
 })
-const app = createApp({})
+const app = createApp()
 app.use(router)
 app.mount('#app')

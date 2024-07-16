@@ -1,4 +1,4 @@
-import 'axios'
+import axios from 'redaxios'
 
 const loadImageWithId = (path, chapter, images) => {
   const tryLoadNextImage = current => {
