@@ -1,8 +1,8 @@
-import { createApp } from 'vue'
+import { createApp } from 'vue/dist/vue.esm-bundler'
 import { createRouter, createWebHistory } from 'vue-router'
 
-import search from '/search.js'
-import manga from '/manga.js'
+import search from './components/search.vue'
+import manga from './components/manga.vue'
 
 const router = createRouter({
   history: createWebHistory(),
