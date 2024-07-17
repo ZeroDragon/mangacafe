@@ -24,15 +24,14 @@
     },
     async beforeMount () {
       const { manga, chapter } = this.$route.params
-      const { data } = await axios.get(`http://localhost:8000/api/manga/${(manga)}`)
+      const { data } = await axios.get(`${__API__}/manga/${(manga)}`)
       this.chapter = `${data.title}: ${chapter}`
       loadImageWithId(data.curPath, `${manga}/${chapter}`, this.images)
     }
   }
 </script>
 <template lang="pug">
-  .manga
-    h1 {{ chapter }}
-    div(v-for="image in images" v-bind:key="image")
-      img(:src="image")
+  h1 {{ chapter }}
+  div(v-for="image in images" v-bind:key="image")
+    img(:src="image")
 </template>
