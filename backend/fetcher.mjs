@@ -2,33 +2,33 @@ import axios from 'axios'
 import { parseString } from 'xml2js'
 import pageScrapper from './scrapper.mjs'
 
-const leftPad = (str, len, ch = '0') => {
-  const [left, ...rest] = str.split('.')
-  const construct = [`${ch.repeat(len)}${left}`.slice(-len)]
-  if (rest.length) construct.push(rest.join('.'))
-  return construct.join('.')
-}
+const ORIGIN = process.env.ORIGIN
 
-const transformer = async url => {
+const transformer = async (manga, chapter) => {
+  const url = `${ORIGIN}/rss/${manga}.xml`
   const { error, json } = await fetchXmlData(url)
   if (error) return { error }
   const response = {}
   const [ item ] = json.rss.channel
   response.title = item.title[0]
   response.image = item.image[0].url[0]
-  response.curPath = await pageScrapper(item.item[0].link[0])
-  response.chapters = item.item.map(item => {
-    const uid = item.guid[0]._.split('-')
-    const chapter = uid.pop()
-    const name = uid.join('-')
-    const guid = `${name}/${leftPad(chapter, 4)}`
-    return {
-      title: item.title[0],
-      guid,
-      image: `//${response.curPath}/manga/${guid}-001.png`,
-      pubDate: item.pubDate[0]
-    }
-  })
+  if (!chapter) {
+    response.chapters = item.item.map(item => {
+      const uid = item.guid[0]._.split('-')
+      const chapter = uid.pop()
+      const name = uid.join('-')
+      const guid = `${name}/${chapter}`
+      return {
+        title: item.title[0],
+        guid,
+        pubDate: item.pubDate[0]
+      }
+    })
+  } else {
+    const [chap] = item.item.filter(item => item.guid[0]._ === `${manga}-${chapter}`)
+    delete response.image
+    response.curPath = await pageScrapper(chap.link[0])
+  }
   return { error, ...response }
 }
 

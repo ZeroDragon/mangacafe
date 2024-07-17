@@ -1,25 +1,22 @@
 import express from 'express'
 import fetchXmlData from './fetcher.mjs'
+import search from './search.mjs'
 
 const app = express()
-const PORT = process.env.PORT || 8000
+const PORT = process.env.PORT
 
-app.set('views', '../frontend')
-app.use(express.static('../frontend'))
-
-app.get('/', (req, res) => {
-  res.render('index.pug')
-})
+app.use(express.json())
 
 // add support for cors
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.header('Access-Control-Allow-Headers', 'Content-Type')
   next()
 })
 
-app.get('/api/manga/:manga', (req, res) => {
-  const url = `https://manga4life.com/rss/${req.params.manga}.xml`
-  fetchXmlData(url)
+app.get('/api/manga/:manga/:chapter?', (req, res) => {
+  fetchXmlData(req.params.manga, req.params.chapter)
     .then(data => {
       res.json(data)
     })
@@ -27,6 +24,10 @@ app.get('/api/manga/:manga', (req, res) => {
       console.error('Error fetching XML:', error)
       res.status(500).send
     })
+})
+
+app.post('/api/search', async (req, res) => {
+  res.json(await search(req.body.query))
 })
 
 app.listen(PORT, () => {

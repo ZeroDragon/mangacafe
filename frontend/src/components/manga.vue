@@ -1,37 +1,52 @@
 <script>
   import axios from 'axios'
 
-  const loadImageWithId = (path, chapter, images) => {
-    const tryLoadNextImage = current => {
-      const currentPadded = `${current}`.padStart(3, '0')
-      const img = new Image()
-      const src = `//${path}/manga/${chapter}-${currentPadded}.png`
-      img.src = src
-      img.onload = _ => {
-        images.push(src)
-        tryLoadNextImage(current + 1)
-      }
-    }
-    tryLoadNextImage(1)
-  }
-
   export default {
     data() {
       return {
-        chapter: null,
-        images: []
+        title: null,
+        chapters: [],
+        image: null,
+        curPath: null
       }
     },
     async beforeMount () {
-      const { manga, chapter } = this.$route.params
+      const { manga } = this.$route.params
       const { data } = await axios.get(`${__API__}/manga/${(manga)}`)
-      this.chapter = `${data.title}: ${chapter}`
-      loadImageWithId(data.curPath, `${manga}/${chapter}`, this.images)
+      this.image = data.image
+      this.chapters = data.chapters.map(chapter => {
+        const {guid, title, pubDate: date} = chapter
+        const pubDate = new Date(date).toLocaleDateString()
+        return { guid, title, pubDate }
+      })
+      this.curPath = data.curPath
+      this.title = data.title
     }
   }
 </script>
 <template lang="pug">
-  h1 {{ chapter }}
-  div(v-for="image in images" v-bind:key="image")
-    img(:src="image")
+  h1 {{ title }}
+  .manga
+    img(:src="image").cover
+    .chapters
+      .chapter(v-for="chapter in chapters", v-bind:key="chapter")
+        a(:href="'/manga/'+ chapter.guid ")
+          span {{ chapter.title }}
+          span {{ chapter.pubDate}}
 </template>
+<style lang="stylus" scoped>
+  .manga
+    display flex
+    align-items flex-start
+  .cover
+    height 300px
+    margin-right 20px
+  .chapters
+    flex-grow 1
+  .chapter, .chapter a
+    flex-grow 1
+    display flex
+    justify-content space-between
+  .chapter a
+    padding: 10px
+</style>

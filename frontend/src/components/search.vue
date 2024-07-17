@@ -1,44 +1,45 @@
 <script>
 import axios from 'axios'
 
-const titleize = str => {
-  return str.split(' ').map(word => {
-    return word.charAt(0).toUpperCase() + word.slice(1)
-  }).join('-')
-}
-
 export default {
   data() {
     return {
-      loading: false,
-      manga: null,
-      chapters: [],
-      search: 'jujutsu kaisen'
+      matches: [],
+      search: ''
     }
   },
   methods: {
     async searchManga() {
-      this.loading = true
-      console.log(titleize(this.search))
-      const url = `${__API__}/manga/${titleize(this.search)}`
-      const response = await axios.get(url)
-      this.loading = false
-      this.manga = response.data
+      const url = `${__API__}/search/`
+      const { data: { error, results } } = await axios.post(url, { query: this.search })
+      if (error) {
+        console.error(error)
+        return
+      }
+      this.matches = results
+        .map(([guid, title]) => ({
+          guid,
+          title,
+          image: `https://temp.compsci88.com/cover/${guid}.jpg`
+        }))
     }
   }
 }
 </script>
 <template lang="pug">
   input(type="text", v-model="search", placeholder="Buscar manga", @keyup.enter="searchManga")
-  button(@click="searchManga") Buscar
-  div(v-if="loading") Cargando...
-  div(v-else)
-    div(v-if="manga")
-      h1 {{ manga.title }}
-      img(:src="manga.image")
-      div(v-for="chapter, index in manga.chapters", v-bind:key="index")
-        a(:href="'/manga/' + chapter.guid")
-          img(:src="chapter.image")
-          | {{ chapter.title }}
-
+  .match(v-for="match in matches", v-bind:key="match.guid")
+    a(:href="'/manga/' + match.guid"): img(:src="match.image")
+    a(:href="'/manga/' + match.guid") {{ match.title }}
 </template>
+<style lang="stylus" scoped>
+img
+  width 50px
+  height 50px
+  object-fit cover
+.match
+  display flex
+  align-items center
+  img
+    margin-right 10px
+</style>
