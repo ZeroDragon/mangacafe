@@ -4,6 +4,22 @@ import pageScrapper from './scrapper.mjs'
 
 const ORIGIN = process.env.ORIGIN
 
+const leftPad = (str, len, ch = '0') => {
+  const [left, ...rest] = str.split('.')
+  const construct = [`${ch.repeat(len)}${left}`.slice(-len)]
+  if (rest.length) construct.push(rest.join('.'))
+  return construct.join('.')
+}
+
+const getMetaData = (name, url) => {
+  const [,chapter,,index] = url.split('/')
+    .pop()
+    .replace(`${name}-`, '')
+    .replace('-page-1.html', '')
+    .split('-')
+  return { chapter, index }
+}
+
 const transformer = async (manga, chapter) => {
   const url = `${ORIGIN}/rss/${manga}.xml`
   const { error, json } = await fetchXmlData(url)
@@ -14,10 +30,12 @@ const transformer = async (manga, chapter) => {
   response.image = item.image[0].url[0]
   if (!chapter) {
     response.chapters = item.item.map(item => {
-      const uid = item.guid[0]._.split('-')
-      const chapter = uid.pop()
-      const name = uid.join('-')
-      const guid = `${name}/${chapter}`
+      const { chapter, index } = getMetaData(manga, item.link[0])
+      const name = manga
+      const indexName = index ? `S${index}` : null
+      const guid = [name, indexName, chapter]
+        // .filter(itm => itm)
+        .join('/')
       return {
         title: item.title[0],
         guid,
@@ -29,7 +47,7 @@ const transformer = async (manga, chapter) => {
     delete response.image
     response.curPath = await pageScrapper(chap.link[0])
   }
-  return { error, ...response }
+  return { ...response }
 }
 
 const fetchXmlData = async url => {
@@ -61,4 +79,26 @@ const fetchXmlData = async url => {
   return { json }
 }
 
-export default transformer
+const mangaData = async (manga, season, chapter) => {
+  const { error, data } = await new Promise(resolve => {
+    transformer(manga, chapter)
+      .then(data => {
+        resolve({ data })
+      })
+      .catch(error => {
+        console.error('Error fetching XML:', error)
+        resolve({ error })
+      })
+  })
+  if (error) return { error }
+  let imageBase = ''
+  if (chapter) {
+    const chapterPadded = leftPad(chapter, 4)
+    const path = [manga, season, chapterPadded].filter(itm => itm).join('/')
+    imageBase = `https://${data.curPath}/manga/${path}-`
+    delete data.curPath
+  }
+  return { data: {...data, imageBase} }
+}
+
+export default mangaData

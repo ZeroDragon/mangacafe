@@ -1,0 +1,39 @@
+html
+  head
+    meta(charset='utf-8')
+    title= title
+    style.
+      body {
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+      #holder {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      img {
+        width: 100%;
+      }
+  body
+    #holder
+    script.
+      const loadImageWithId = _ => {
+        const path = "#{imageBase}"
+        const tryLoadNextImage = current => {
+          const currentPadded = `${current}`.padStart(3, '0')
+          const img = new Image()
+          const src = `${path}${currentPadded}.png`
+          console.log(src)
+          img.src = src
+          img.onload = _ => {
+            const holder = document.getElementById('holder')
+            holder.appendChild(img)
+            tryLoadNextImage(current + 1)
+          }
+        }
+        tryLoadNextImage(1)
+      }
+      loadImageWithId()

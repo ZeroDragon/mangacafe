@@ -1,11 +1,14 @@
 import express from 'express'
 import fetchXmlData from './fetcher.mjs'
 import search from './search.mjs'
+import mangaData from './fetcher.mjs'
 
 const app = express()
 const PORT = process.env.PORT
 
 app.use(express.json())
+app.set('views', './')
+app.set('view engine', 'pug')
 
 // add support for cors
 app.use((_req, res, next) => {
@@ -24,6 +27,13 @@ app.get('/api/manga/:manga/:chapter?', (req, res) => {
       console.error('Error fetching XML:', error)
       res.status(500).send
     })
+})
+
+app.get('/read/:manga/:chapter/:season?', async (req, res) => {
+  const { manga, chapter, season } = req.params
+  const { data, error } = await mangaData(manga, season, chapter)
+  if (error) return res.json({ error })
+  res.render('./issue.pug', { ...data })
 })
 
 app.post('/api/search', async (req, res) => {
