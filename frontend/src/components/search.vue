@@ -29,8 +29,8 @@ export default {
 <template lang="pug">
   input(type="text", v-model="search", placeholder="Buscar manga", @keyup.enter="searchManga")
   .match(v-for="match in matches", v-bind:key="match.guid")
-    a(:href="'/manga/' + match.guid"): img(:src="match.image")
-    a(:href="'/manga/' + match.guid") {{ match.title }}
+    a(:href="match.guid"): img(:src="match.image")
+    a(:href="match.guid") {{ match.title }}
 </template>
 <style lang="stylus" scoped>
 img

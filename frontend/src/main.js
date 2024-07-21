@@ -9,8 +9,8 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: search },
-    { path: '/manga/:manga', component: manga },
-    { path: '/manga/:manga/:chapter', component: chapter }
+    { path: '/:manga', component: manga },
+    { path: '/:manga/:chapter/:season?', component: chapter }
   ]
 })
 const app = createApp()

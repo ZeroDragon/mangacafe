@@ -8,11 +8,11 @@
     return construct.join('.')
   }
 
-  const loadImageWithId = (path, chapter, images) => {
+  const loadImageWithId = (path, images) => {
     const tryLoadNextImage = current => {
       const currentPadded = `${current}`.padStart(3, '0')
       const img = new Image()
-      const src = `//${path}/manga/${chapter}-${currentPadded}.png`
+      const src = `${path}${currentPadded}.png`
       img.src = src
       img.onload = _ => {
         images.push(src)
@@ -31,12 +31,13 @@
       }
     },
     async beforeMount () {
-      const { manga, chapter } = this.$route.params
+      const { manga, chapter, season } = this.$route.params
+      const uri = [manga, chapter, season].filter(itm => itm !== '').join('/')
       this.manga = manga
-      const { data } = await axios.get(`${__API__}/manga/${(manga)}/${chapter}`)
+      const { data: { data } } = await axios.get(`${__API__}/manga/${uri}`)
       this.chapter = `${data.title}: ${chapter}`
       const chapterPadded = leftPad(chapter, 4)
-      loadImageWithId(data.curPath, `${manga}/${chapterPadded}`, this.images)
+      loadImageWithId(data.imageBase, this.images)
     }
   }
 </script>

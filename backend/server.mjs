@@ -1,5 +1,4 @@
 import express from 'express'
-import fetchXmlData from './fetcher.mjs'
 import search from './search.mjs'
 import mangaData from './fetcher.mjs'
 
@@ -18,8 +17,9 @@ app.use((_req, res, next) => {
   next()
 })
 
-app.get('/api/manga/:manga/:chapter?', (req, res) => {
-  fetchXmlData(req.params.manga, req.params.chapter)
+app.get('/api/manga/:manga/:chapter?/:season?', (req, res) => {
+  const { manga, chapter, season } = req.params
+  mangaData(manga, season, chapter)
     .then(data => {
       res.json(data)
     })
@@ -27,13 +27,6 @@ app.get('/api/manga/:manga/:chapter?', (req, res) => {
       console.error('Error fetching XML:', error)
       res.status(500).send
     })
-})
-
-app.get('/read/:manga/:chapter/:season?', async (req, res) => {
-  const { manga, chapter, season } = req.params
-  const { data, error } = await mangaData(manga, season, chapter)
-  if (error) return res.json({ error })
-  res.render('./issue.pug', { ...data })
 })
 
 app.post('/api/search', async (req, res) => {
