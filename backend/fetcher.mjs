@@ -20,7 +20,7 @@ const getMetaData = (name, url) => {
   return { chapter, index }
 }
 
-const transformer = async (manga, chapter) => {
+const transformer = async (manga, chapter, season) => {
   const url = `${ORIGIN}/rss/${manga}.xml`
   const { error, json } = await fetchXmlData(url)
   if (error) return { error }
@@ -28,24 +28,37 @@ const transformer = async (manga, chapter) => {
   const [ item ] = json.rss.channel
   response.title = item.title[0]
   response.image = item.image[0].url[0]
-  if (!chapter) {
-    response.chapters = item.item.map(item => {
-      const { chapter, index } = getMetaData(manga, item.link[0])
-      const name = manga
-      const indexName = index ? `S${index}` : null
-      const guid = [name, indexName, chapter]
-        // .filter(itm => itm)
-        .join('/')
-      return {
-        title: item.title[0],
-        guid,
-        pubDate: item.pubDate[0]
+  response.chapters = item.item.map(item => {
+    const { chapter, index } = getMetaData(manga, item.link[0])
+    const name = manga
+    const indexName = index ? `S${index}` : null
+    return {
+      title: item.title[0],
+      chapter,
+      pubDate: item.pubDate[0],
+      link: item.link[0],
+      uri: [name, chapter, indexName].filter(itm => itm).join('/')
+    }
+  })
+  if (chapter) {
+    const [chap] = response.chapters.filter(chp => chp.uri === [manga, chapter, season].filter(itm => itm).join('/'))
+    const index = response.chapters.findIndex(chp => chp.uri === chap.uri)
+    response.curPath = await pageScrapper(chap.link)
+    Object.entries({ prev: 1, next: -1 }).forEach(([key, value]) => {
+      response[key] = response.chapters[index + value]
+      if (response[key]) {
+        delete response[key].link
+        delete response[key].title
+        delete response[key].pubDate
       }
     })
-  } else {
-    const [chap] = item.item.filter(item => item.guid[0]._ === `${manga}-${chapter}`)
+    delete response.chapters
     delete response.image
-    response.curPath = await pageScrapper(chap.link[0])
+  } else {
+    response.chapters = response.chapters.map(chapter => {
+      delete chapter.link
+      return chapter
+    })
   }
   return { ...response }
 }
@@ -81,7 +94,7 @@ const fetchXmlData = async url => {
 
 const mangaData = async (manga, season, chapter) => {
   const { error, data } = await new Promise(resolve => {
-    transformer(manga, chapter)
+    transformer(manga, chapter, season)
       .then(data => {
         resolve({ data })
       })

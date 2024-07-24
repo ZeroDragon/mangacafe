@@ -23,6 +23,9 @@ export default {
           image: `https://temp.compsci88.com/cover/${guid}.jpg`
         }))
     }
+  },
+  mounted() {
+    this.search = ''
   }
 }
 </script>

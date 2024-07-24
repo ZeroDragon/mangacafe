@@ -30,7 +30,7 @@ app.get('/api/manga/:manga/:chapter?/:season?', (req, res) => {
 })
 
 app.post('/api/search', async (req, res) => {
-  res.json(await search(req.body.query))
+  res.json(await search(req.body.query.toLowerCase()))
 })
 
 app.listen(PORT, () => {
