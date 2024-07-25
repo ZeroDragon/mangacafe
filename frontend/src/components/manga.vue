@@ -7,13 +7,17 @@
         title: null,
         chapters: [],
         image: null,
-        curPath: null
+        curPath: null,
+        description: null,
+        status: null
       }
     },
     async beforeMount () {
       const { manga } = this.$route.params
       const { data: { data } } = await axios.get(`${__API__}/manga/${(manga)}`)
       this.image = data.image
+      this.description = data.description
+      this.status = data.status
       this.chapters = data.chapters.map(chapter => {
         const { uri, title, pubDate: date } = chapter
         const pubDate = new Date(date).toLocaleDateString()
@@ -27,7 +31,10 @@
 <template lang="pug">
   h1 {{ title }}
   .manga
-    img(:src="image").cover
+    .meta
+      img(:src="image").cover
+      .status Status: {{ status }}
+      .description {{ description }}
     .chapters
       .chapter(v-for="chapter in chapters", v-bind:key="chapter")
         a(:href="chapter.uri ")
@@ -49,4 +56,10 @@
     justify-content space-between
   .chapter a
     padding: 10px
+  .description
+    text-align justify
+    max-width 225px
+  .status
+    font-weight bold
+    margin 10px 0
 </style>

@@ -44,18 +44,21 @@
   }
 </script>
 <template lang="pug">
+  mixin nav
+    .nav(v-if="!loading")
+      .prev
+        a(:href="'/' + prev.uri" v-if="prev") Prev: {{prev.chapter}}
+        .noEntry(v-else) Prev: None
+      .curr
+        | Current: {{ chapter }}
+      .next
+        a(:href="'/' + next.uri" v-if="next") Next: {{next.chapter}}
+        .noEntry(v-else) Next: None
   .title: a(:href="'/' + manga") {{mangaTitle}}
-  .nav(v-if="!loading")
-    .prev
-      a(:href="'/' + prev.uri" v-if="prev") Prev: {{prev.chapter}}
-      .noEntry(v-else) Prev: None
-    .curr
-      | Current: {{ chapter }}
-    .next
-      a(:href="'/' + next.uri" v-if="next") Next: {{next.chapter}}
-      .noEntry(v-else) Next: None
+  +nav
   div(v-for="image in images" v-bind:key="image")
     img(:src="image")
+  +nav
 </template>
 <style lang="stylus" scoped>
   img

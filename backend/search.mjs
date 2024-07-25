@@ -70,3 +70,4 @@ const search = async (query) => {
 }
 
 export default search
+export { cache }
