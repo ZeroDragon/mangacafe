@@ -78,7 +78,7 @@
 </script>
 <template lang="pug">
   .search
-    .header Monas Chinas
+    .header Manga Café
     input(
       type="text",
       v-model="search",
