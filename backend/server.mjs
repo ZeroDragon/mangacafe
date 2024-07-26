@@ -34,6 +34,10 @@ app.post('/api/search', async (req, res) => {
   res.json(await search(req.body.query.toLowerCase()))
 })
 
+app.get('/api/', (_req, res) => {
+  res.json({ message: 'Hello world' })
+})
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
 })
