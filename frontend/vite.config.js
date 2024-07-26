@@ -27,6 +27,10 @@ export default (({ mode }) => {
     plugins: [vue(), dotPathFixPlugin()],
     define: {
       '__API__': `"${env.API}"`
+    },
+    build: {
+      outDir: env.BUILD_OUT_DIR,
+      emptyOutDir: true
     }
   })
 })
