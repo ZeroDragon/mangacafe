@@ -1,6 +1,6 @@
 import axios from 'axios'
 const ORIGIN = process.env.ORIGIN
-const pathName = async url => {
+const chapterData = async url => {
   const htmlData = await new Promise(resolve => {
     try {
       axios.get(url)
@@ -16,12 +16,21 @@ const pathName = async url => {
       resolve({ error })
     }
   })
-  return htmlData.data
+  const [chapterInfo, pathName] = htmlData.data
     .split('\n')
-    .find(line => line.includes('CurPathName ='))
-    .split(' = ')[1]
-    .split(';')[0]
-    .replace(/"/g, '')
+    .filter(line => {
+      return line.includes('vm.CurPathName =') || line.includes('vm.CurChapter =')
+    })
+    .slice(0, 2)
+    .map(line => line.split(' = ')[1].split(';')[0])
+    .map(line => JSON.parse(line))
+  return {
+    chapterInfo: {
+      page: ~~chapterInfo.Page,
+      bucket: chapterInfo.Directory
+    },
+    pathName
+  }
 }
 
 const metaData = async manga => {
@@ -55,4 +64,4 @@ const metaData = async manga => {
   return { status, description }
 }
 
-export { pathName, metaData }
+export { chapterData, metaData }

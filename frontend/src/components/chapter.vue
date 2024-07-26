@@ -1,19 +1,6 @@
 <script>
   import axios from 'axios'
 
-  const loadImageWithId = (path, images) => {
-    const tryLoadNextImage = current => {
-      const currentPadded = `${current}`.padStart(3, '0')
-      const img = new Image()
-      const src = `${path}${currentPadded}.png`
-      img.src = src
-      img.onload = _ => {
-        images.push(src)
-        tryLoadNextImage(current + 1)
-      }
-    }
-    tryLoadNextImage(1)
-  }
   export default {
     data() {
       return {
@@ -24,7 +11,8 @@
         prev: {},
         next: {},
         imageBase: null,
-        loading: true
+        loading: true,
+        pages: 0
       }
     },
     async beforeMount () {
@@ -38,7 +26,7 @@
       this.mangaTitle = data.title
       this.imageBase = data.imageBase
       this.loading = false
-      loadImageWithId(this.imageBase, this.images)
+      this.pages = data.pages
     },
     mounted () {
       window.addEventListener('keydown', this.handleKeyDown)
@@ -79,8 +67,9 @@
         .noEntry(v-else) Next: None
   .title: a(:href="'/' + manga") {{mangaTitle}}
   +nav
-  div(v-for="image in images" v-bind:key="image")
-    img(:src="image")
+  div(v-for="image in pages" v-bind:key="image")
+    object(:src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
+      img(:src="imageBase[1] + `${image}`.padStart(3, '0') + '.png'")
   +nav
 </template>
 <style lang="stylus" scoped>

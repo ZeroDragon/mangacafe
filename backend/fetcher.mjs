@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { parseString } from 'xml2js'
-import { pathName, metaData } from './scrapper.mjs'
+import { chapterData, metaData } from './scrapper.mjs'
 import { cache } from './search.mjs'
 
 const ORIGIN = process.env.ORIGIN
@@ -43,7 +43,9 @@ const transformer = async (manga, chapter, season) => {
   if (chapter) {
     const [chap] = response.chapters.filter(chp => chp.uri === [manga, chapter, season].filter(itm => itm).join('/'))
     const index = response.chapters.findIndex(chp => chp.uri === chap.uri)
-    response.curPath = await pathName(chap.link)
+    const { chapterInfo, pathName } = await chapterData(chap.link)
+    response.curPath = pathName
+    response.chapterInfo = chapterInfo
     Object.entries({ prev: 1, next: -1 }).forEach(([key, value]) => {
       response[key] = response.chapters[index + value]
       if (response[key]) {
@@ -104,16 +106,22 @@ const mangaData = async (manga, season, chapter) => {
       })
   })
   if (error) return { error }
-  let imageBase = ''
+  let imageBase = null
   if (chapter) {
     const chapterPadded = leftPad(chapter, 4)
     const path = [manga, season, chapterPadded].filter(itm => itm).join('/')
-    imageBase = `https://${data.curPath}/manga/${path}-`
+    const pathAlt = [
+      manga,
+      data.chapterInfo.bucket,
+      chapterPadded
+    ].filter(itm => itm !== '').join('/')
+    imageBase = [`https://${data.curPath}/manga/${path}-`, `https://${data.curPath}/manga/${pathAlt}-`]
+    data.pages = data.chapterInfo.page
+    delete data.chapterInfo
     delete data.curPath
   } else {
     const mangaInfo = cache.memory?.search?.value?.find(item => item.i === manga)
     if (mangaInfo && !mangaInfo.metaData) {
-      console.log('Fetching metadata for', manga)
       const { status, description, error } = await metaData(manga)
       if (!error) mangaInfo.metaData = { status, description }
     }
