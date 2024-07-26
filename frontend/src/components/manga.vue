@@ -42,7 +42,7 @@
         .description {{ description }}
     .chapters
       .chapter(v-for="chapter in chapters", v-bind:key="chapter")
-        a(:href="chapter.uri ")
+        a(:href="chapter.uri")
           span {{ chapter.title }}
           span {{ chapter.pubDate}}
 </template>
@@ -64,6 +64,9 @@
     justify-content space-between
   .chapter a
     padding: 10px
+    position relative
+    &:hover
+      background-color var(--primary)
   .description
     text-align justify
   .meta
