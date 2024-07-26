@@ -14,7 +14,6 @@
     }
     tryLoadNextImage(1)
   }
-
   export default {
     data() {
       return {
@@ -40,6 +39,22 @@
       this.imageBase = data.imageBase
       this.loading = false
       loadImageWithId(this.imageBase, this.images)
+    },
+    mounted () {
+      window.addEventListener('keydown', this.handleKeyDown)
+    },
+    beforeDestroy () {
+      window.addEventListener('keydown', this.handleKeyDown)
+    },
+    methods: {
+      handleKeyDown (e) {
+        if (e.key === 'ArrowLeft' && this.prev) {
+          this.$refs.prev.click()
+        }
+        if (e.key === 'ArrowRight' && this.next) {
+          this.$refs.next.click()
+        }
+      }
     }
   }
 </script>
@@ -47,12 +62,20 @@
   mixin nav
     .nav(v-if="!loading")
       .prev
-        a(:href="'/' + prev.uri" v-if="prev") Prev: {{prev.chapter}}
+        a(
+          :href="'/' + prev.uri"
+          v-if="prev",
+          ref="prev"
+        ) Prev: {{prev.chapter}}
         .noEntry(v-else) Prev: None
       .curr
         | Current: {{ chapter }}
       .next
-        a(:href="'/' + next.uri" v-if="next") Next: {{next.chapter}}
+        a(
+          :href="'/' + next.uri"
+          v-if="next"
+          ref="next"
+        ) Next: {{next.chapter}}
         .noEntry(v-else) Next: None
   .title: a(:href="'/' + manga") {{mangaTitle}}
   +nav

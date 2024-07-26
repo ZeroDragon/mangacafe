@@ -29,12 +29,17 @@
   }
 </script>
 <template lang="pug">
-  h1 {{ title }}
-  .manga
+  .header: img(:src="image")
+  h1
+    a(href="/"): img(src="/small.png").logo
+    span.mangaTitle {{ title }}
+  .manga(v-if="title")
     .meta
-      img(:src="image").cover
-      .status Status: {{ status }}
-      .description {{ description }}
+      .cover
+        img(:src="image")
+      .info
+        .status Status: {{ status }}
+        .description {{ description }}
     .chapters
       .chapter(v-for="chapter in chapters", v-bind:key="chapter")
         a(:href="chapter.uri ")
@@ -42,24 +47,66 @@
           span {{ chapter.pubDate}}
 </template>
 <style lang="stylus" scoped>
+.manga
+  display flex
+  align-items flex-start
+.cover img
+  width 100%
+.chapters
+  flex-grow 1
+  height calc(100vh - 100px)
+  overflow-y auto
+  scrollbar-color var(--primary) var(--background)
+  scrollbar-width thin
+.chapter, .chapter a
+  flex-grow 1
+  display flex
+  justify-content space-between
+.chapter a
+  padding: 10px
+.description
+  text-align justify
+.meta
+  width 25%
+  padding-right 20px
+.status
+  font-weight bold
+  margin 10px 0
+.logo
+  width 50px
+  height 50px
+  border-radius 5px
+  margin-right 10px
+h1
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
+  display flex
+  align-items center
+  margin-bottom 0
+.header
+  display none
+@media (max-width: 600px)
+  .header
+    display block
+    position absolute
+    top 0
+    left 0
+    z-index -1
+    opacity 0.05
+    width 100%
+    height 100%
+    img
+      width 100%
+      height 100%
+      object-fit cover
+      object-position center
   .manga
-    display flex
-    align-items flex-start
-  .cover
-    height 300px
-    margin-right 20px
-  .chapters
-    flex-grow 1
-  .chapter, .chapter a
-    flex-grow 1
-    display flex
-    justify-content space-between
-  .chapter a
-    padding: 10px
-  .description
-    text-align justify
-    max-width 225px
-  .status
-    font-weight bold
-    margin 10px 0
+    flex-direction column
+  .meta, .chapters
+    width 100%
+  .meta
+    padding 0
+    .cover
+      display none
 </style>
