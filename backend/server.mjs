@@ -1,3 +1,4 @@
+import '../dotenv.mjs'
 import express from 'express'
 import search from './search.mjs'
 import mangaData from './fetcher.mjs'
