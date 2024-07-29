@@ -12,7 +12,7 @@ const store = reactive({
         display: 'Completed',
         items: []
       },
-      OnHold: {
+      onHold: {
         display: 'On Hold',
         items: []
       },

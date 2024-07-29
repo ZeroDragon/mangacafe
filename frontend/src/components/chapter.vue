@@ -1,3 +1,42 @@
+<template lang="pug">
+  mixin nav
+    .nav(v-if="!loading")
+      .prev
+        .a(
+          v-if="prev"
+          @click="goPrev"
+        ) Prev: {{prev.chapter}}
+        .noEntry(v-else) Prev: None
+      .curr
+        | Current: {{ chapter }}
+      .next
+        .a(
+          v-if="next"
+          @click="goNext"
+        ) Next: {{next.chapter}}
+        .noEntry(v-else) Next: None
+  .title: a(:href="'/' + manga") {{mangaTitle}}
+  template.noShow
+    a(
+      :href="'/' + prev.uri"
+      v-if="prev",
+      ref="prev"
+    ) Prev: {{prev.chapter}}
+    .noEntry(v-else) Prev: None
+    a(
+      :href="'/' + next.uri"
+      v-if="next"
+      ref="next"
+    ) Next: {{next.chapter}}
+    .noEntry(v-else) Next: None
+  +nav
+  div(v-for="image in pages" v-bind:key="image")
+    object(:src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
+      img(:src="imageBase[1] + `${image}`.padStart(3, '0') + '.png'")
+  +nav
+  .vSpacer
+  .progressBar: .fill(v-bind:style="{width: `${progress}%`}")
+</template>
 <script>
   import axios from 'axios'
 
@@ -12,7 +51,8 @@
         next: {},
         imageBase: null,
         loading: true,
-        pages: 0
+        pages: 0,
+        progress: 0
       }
     },
     async beforeMount () {
@@ -27,51 +67,43 @@
       this.imageBase = data.imageBase
       this.loading = false
       this.pages = data.pages
+      this.index = data.index
+      this.mangaFromMem = this.$storage.get('mangas')[this.manga] || { lastRead: 0 }
     },
     mounted () {
       window.addEventListener('keydown', this.handleKeyDown)
+      window.addEventListener('scroll', this.handleScroll)
     },
-    beforeDestroy () {
-      window.addEventListener('keydown', this.handleKeyDown)
+    beforeUnmount () {
+      window.removeEventListener('keydown', this.handleKeyDown)
+      window.removeEventListener('scroll', this.handleScroll)
     },
     methods: {
+      goNext () {
+        this.mangaFromMem.lastRead = this.index + 1
+        this.$storage.set('mangas', {
+          ...this.$storage.get('mangas'),
+          [this.manga]: this.mangaFromMem
+        })
+        this.$refs.next.click()
+      },
+      goPrev () {
+        this.$refs.prev.click()
+      },
       handleKeyDown (e) {
         if (e.key === 'ArrowLeft' && this.prev) {
-          this.$refs.prev.click()
+          this.goPrev()
         }
         if (e.key === 'ArrowRight' && this.next) {
-          this.$refs.next.click()
+          this.goNext()
         }
+      },
+      handleScroll () {
+        this.progress = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100
       }
     }
   }
 </script>
-<template lang="pug">
-  mixin nav
-    .nav(v-if="!loading")
-      .prev
-        a(
-          :href="'/' + prev.uri"
-          v-if="prev",
-          ref="prev"
-        ) Prev: {{prev.chapter}}
-        .noEntry(v-else) Prev: None
-      .curr
-        | Current: {{ chapter }}
-      .next
-        a(
-          :href="'/' + next.uri"
-          v-if="next"
-          ref="next"
-        ) Next: {{next.chapter}}
-        .noEntry(v-else) Next: None
-  .title: a(:href="'/' + manga") {{mangaTitle}}
-  +nav
-  div(v-for="image in pages" v-bind:key="image")
-    object(:src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
-      img(:src="imageBase[1] + `${image}`.padStart(3, '0') + '.png'")
-  +nav
-</template>
 <style lang="stylus" scoped>
   img
     width 100%
@@ -85,10 +117,10 @@
     justify-content space-between
     padding 10px
     margin-bottom 10px
-    a
-      text-decoration none
+    .a
+      cursor pointer
       width 100%
-    a, .noEntry
+    .a, .noEntry
       display block
       padding: 10px
     .prev
@@ -101,4 +133,24 @@
     & > div
       width: calc(100%/3)
       text-align: center
+  .noShow
+    display none
+  .vSpacer
+    height 10px
+  .progressBar
+    position fixed
+    bottom 0
+    left 0
+    width 100%
+    height 7px
+    background-color var(--background)
+    z-index 100
+    .fill
+      content ''
+      display block
+      position absolute
+      bottom 0
+      width 0%
+      height 5px
+      background-color var(--primary)
 </style>

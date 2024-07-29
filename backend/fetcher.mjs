@@ -29,7 +29,7 @@ const transformer = async (manga, chapter, season) => {
   const [ item ] = json.rss.channel
   response.title = item.title[0]
   response.image = item.image[0].url[0]
-  response.chapters = item.item.map(item => {
+  response.chapters = item.item.map((item, i, s) => {
     const { chapter, index } = getMetaData(manga, item.link[0])
     const indexName = index ? `S${index}` : null
     return {
@@ -37,7 +37,8 @@ const transformer = async (manga, chapter, season) => {
       chapter,
       pubDate: item.pubDate[0],
       link: item.link[0],
-      uri: [manga, chapter, indexName].filter(itm => itm).join('/')
+      uri: [manga, chapter, indexName].filter(itm => itm).join('/'),
+      index: s.length - i
     }
   })
   if (chapter) {
@@ -46,6 +47,7 @@ const transformer = async (manga, chapter, season) => {
     const { chapterInfo, pathName } = await chapterData(chap.link)
     response.curPath = pathName
     response.chapterInfo = chapterInfo
+    response.index = chap.index
     Object.entries({ prev: 1, next: -1 }).forEach(([key, value]) => {
       response[key] = response.chapters[index + value]
       if (response[key]) {
