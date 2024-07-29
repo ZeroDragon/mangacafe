@@ -1,33 +1,3 @@
-<script>
-  import axios from 'axios'
-
-  export default {
-    data() {
-      return {
-        title: null,
-        chapters: [],
-        image: null,
-        curPath: null,
-        description: null,
-        status: null
-      }
-    },
-    async beforeMount () {
-      const { manga } = this.$route.params
-      const { data: { data } } = await axios.get(`${__API__}/manga/${(manga)}`)
-      this.image = data.image
-      this.description = data.description
-      this.status = data.status
-      this.chapters = data.chapters.map(chapter => {
-        const { uri, title, pubDate: date } = chapter
-        const pubDate = new Date(date).toLocaleDateString()
-        return { uri, title, pubDate }
-      })
-      this.curPath = data.curPath
-      this.title = data.title
-    }
-  }
-</script>
 <template lang="pug">
   .header: img(:src="image")
   h1
@@ -38,14 +8,70 @@
       .cover
         img(:src="image")
       .info
-        .status Status: {{ status }}
+        .bar
+          .status Status: {{ status }}
+          .icon(@click="openSettings"): span.material-symbols-outlined settings
         .description {{ description }}
     .chapters
-      .chapter(v-for="chapter in chapters", v-bind:key="chapter")
+      .chapter(
+        v-for="(chapter, key) in chapters",
+        v-bind:key="chapter"
+        :class="{ read: chapter.read }"
+      )
         a(:href="chapter.uri")
-          span {{ chapter.title }}
+          span
+            span.entry \#{{chapters.length - key}} 
+            | {{ chapter.title.replace(title, '') }}
           span {{ chapter.pubDate}}
 </template>
+<script>
+  import axios from 'axios'
+
+  export default {
+    data() {
+      return {
+        title: null,
+        image: null,
+        curPath: null,
+        description: null,
+        status: null,
+        manga: null
+      }
+    },
+    computed: {
+      chapters () {
+        const lastRead = this.$storage.get('mangas')[this.manga]?.lastRead || 0
+        return this._chapters.map((e,i,s) => {
+          return {
+            ...e,
+            read: lastRead >= s.length - i
+          }
+        })
+      }
+    },
+    methods: {
+      openSettings () {
+        this.$storage.set('displaySettings', true)
+      }
+    },
+    async beforeMount () {
+      const { manga } = this.$route.params
+      this.manga = manga
+      const { data: { data } } = await axios.get(`${__API__}/manga/${(manga)}`)
+      this.$storage.set('mangaLoaded', manga)
+      this.image = data.image
+      this.description = data.description
+      this.status = data.status
+      this._chapters = data.chapters.map((chapter, index) => {
+        const { uri, title, pubDate: date } = chapter
+        const pubDate = new Date(date).toLocaleDateString()
+        return { uri, title, pubDate }
+      })
+      this.curPath = data.curPath
+      this.title = data.title
+    }
+  }
+</script>
 <style lang="stylus" scoped>
   .manga
     display flex
@@ -67,6 +93,8 @@
     position relative
     &:hover
       background-color var(--primary)
+  &.read
+    opacity 0.5
   .description
     text-align justify
   .meta
@@ -112,4 +140,14 @@
       padding 0
       .cover
         display none
+  .entry
+    font-weight 300
+    font-size 10px
+  .bar
+    display flex
+    justify-content space-between
+    align-items flex-end
+    .icon span
+      font-size 22px
+      cursor pointer
 </style>
