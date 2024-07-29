@@ -1,14 +1,30 @@
 <template lang="pug">
   .menu(:class="{displaying: displaying}")
     .icon: span.material-symbols-outlined(@click="toggleMenu") {{menuIcon}}
-    .title My Lists
+    a(href="/").section
+      span.icn.material-symbols-outlined home
+      | Go Home
+    .section
+      span.icn.material-symbols-outlined list
+      | My manga lists
     .lists
       .list(v-for="(list, key) in lists" :key="key")
-        .name {{list.display}}
-        .manga(v-for="(manga, mkey) in list.items" :key="mkey")
-          .manga: a(:href="'/' + manga") {{manga}}
+        .name(@click="toggleList(list)")
+          | {{list.display}} 
+          span.count ({{list.items.length}})
+        a.manga(
+          v-for="(manga, mkey) in list.itemsParsed"
+          :key="mkey"
+          :href="'/' + manga.uri"
+          v-if="list.show"
+        )
+          .img(v-if="manga.image"): img(:src="manga.image")
+          .data
+            span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
+            span.title {{manga.title}}
 </template>
 <script>
+import axios from 'axios'
 export default {
   data() {
     return {
@@ -18,6 +34,30 @@ export default {
     }
   },
   methods: {
+    updateList(list) {
+      list.itemsParsed = list.items.map(_ => ({ title: 'loading...' }))
+      Promise.all(list.items.map(async manga => {
+        const { data: { data } } = await axios.get(`${__API__}/manga/${manga}`)
+        return {...data, id: manga }
+      })).then(data => {
+        list.itemsParsed = data.map(itm => {
+          const { lastRead } = this.mangas[itm.id] || { lastRead: 0 }
+          const lastChapter = itm.chapters[0]
+          const newChapters = Math.max(0, lastChapter.index - lastRead)
+          return {
+            newChapters,
+            title: itm.title,
+            image: itm.image,
+            uri: itm.id
+          }
+        })
+        list.itemsParsed.sort((a, b) => b.newChapters - a.newChapters)
+      })
+    },
+    toggleList(list) {
+      list.show = !list.show
+      if(list.show) this.updateList(list)
+    },
     toggleMenu() {
       this.displaying = !this.displaying
       this.menuIcon = this.displaying ? 'close' : 'menu'
@@ -25,41 +65,74 @@ export default {
     },
     reloadData() {
       this.lists = this.$storage.get('lists')
+      this.mangas = this.$storage.get('mangas')
     }
   }
 }
 </script>
 <style lang="stylus">
 .menu
-  position: fixed
-  top: 0
-  right: -300px
-  width: 300px
-  height: 100%
-  background-color: var(--background)
-  padding: 10px
-  z-index: 100
-  transition: right 0.5s
+  --offset 10px
+  position fixed
+  top 0
+  right -300px
+  width 300px
+  height 100%
+  background-color var(--background)
+  padding 10px
+  z-index 100
+  transition right 0.5s
   &.displaying
-    border-left: 1px solid var(--primary)
-    box-shadow: 0 0 10px #000
-    right: 0
-  .title
-    font-size: 2em
-    font-weight: 400
+    border-left 1px solid var(--primary)
+    box-shadow 0 0 10px #000
+    right 0
   .icon
     position absolute
-    left: -35px
+    left -35px
     cursor pointer
 .list .name
-  font-size: 1.5em
-  font-weight: 400
-@media (max-width: 600px)
+  font-size 1.2em
+  font-weight 400
+  margin-left var(--offset)
+  .count
+    font-size 0.8em
+    opacity 0.5
+.list .manga
+  margin-left calc(var(--offset) * 2)
+  display flex
+  align-items center
+  .img
+    width 50px
+    margin-right 10px
+    img
+      width 50px
+      height 50px
+      border-radius 5px
+      object-fit cover
+  .data
+    display flex
+    flex-direction column
+  .data .new
+    font-size 0.8em
+    color var(--primary)
+    font-weight 500
+  .data .title
+    max-width 180px
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+.section
+  display flex
+  align-items center
+  font-size 20px
+  .icn
+    margin-right 10px
+@media (max-width 600px)
   .menu
-    width: 100%
-    right: -100%
+    width 100%
+    right -100%
     &.displaying
-      right: 0
+      right 0
       .icon
-        left: 93%
+        left 90%
 </style>

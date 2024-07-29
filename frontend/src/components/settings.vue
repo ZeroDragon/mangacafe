@@ -107,7 +107,7 @@ input
   padding 10px
   cursor pointer
   border-radius 5px
-  &:hover, &.active
+  &.active
     background-color var(--primary)
     color var(--foreground)
 </style>

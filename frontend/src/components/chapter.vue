@@ -17,18 +17,8 @@
         .noEntry(v-else) Next: None
   .title: a(:href="'/' + manga") {{mangaTitle}}
   template.noShow
-    a(
-      :href="'/' + prev.uri"
-      v-if="prev",
-      ref="prev"
-    ) Prev: {{prev.chapter}}
-    .noEntry(v-else) Prev: None
-    a(
-      :href="'/' + next.uri"
-      v-if="next"
-      ref="next"
-    ) Next: {{next.chapter}}
-    .noEntry(v-else) Next: None
+    a(:href="'/' + prev.uri" v-if="prev", ref="prev") Prev
+    a(:href="'/' + next.uri" v-if="next" ref="next") Next
   +nav
   div(v-for="image in pages" v-bind:key="image")
     object(:src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
@@ -108,13 +98,19 @@
   img
     width 100%
   .title
-    text-align: center
-    font-size: 1.2em
-    padding: 10px
-    font-weight: bold
+    text-align center
+    font-size 1.2em
+    padding 10px
+    font-weight bold
+    width 90%
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+    margin auto
   .nav
     display flex
     justify-content space-between
+    align-items center
     padding 10px
     margin-bottom 10px
     .a
@@ -122,14 +118,14 @@
       width 100%
     .a, .noEntry
       display block
-      padding: 10px
+      padding 10px
     .prev
-      background-color: olive
+      background-color olive
     .curr
       font-weight bold
-      padding: 10px
+      padding 10px
     .next
-      background-color: tomato
+      background-color tomato
     & > div
       width: calc(100%/3)
       text-align: center
