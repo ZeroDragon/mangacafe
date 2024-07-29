@@ -6,6 +6,7 @@ import search from './components/search.vue'
 import chapter from './components/chapter.vue'
 import manga from './components/manga.vue'
 import settings from './components/settings.vue'
+import hamburger from './components/hamburger.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,7 +17,7 @@ const router = createRouter({
   ]
 })
 const app = createApp({
-  components: { settings }
+  components: { settings, hamburger }
 })
 app.use(storage)
 app.use(router)
