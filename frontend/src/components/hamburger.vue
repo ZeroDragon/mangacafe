@@ -135,7 +135,7 @@ export default {
       right 0
       .icon
         left 90%
-.list .manga
-  .data .title
-    max-width 280px
+  .list .manga
+    .data .title
+      max-width 280px
 </style>
