@@ -110,4 +110,7 @@ input
   &.active
     background-color var(--primary)
     color var(--foreground)
+@media (max-width 600px)
+  .section .options
+    flex-direction column
 </style>

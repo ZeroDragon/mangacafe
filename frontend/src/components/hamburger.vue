@@ -70,7 +70,7 @@ export default {
   }
 }
 </script>
-<style lang="stylus">
+<style lang="stylus" scoped>
 .menu
   --offset 10px
   position fixed
@@ -135,4 +135,7 @@ export default {
       right 0
       .icon
         left 90%
+.list .manga
+  .data .title
+    max-width 280px
 </style>
