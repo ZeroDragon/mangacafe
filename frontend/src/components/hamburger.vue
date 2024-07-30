@@ -18,7 +18,9 @@
           :href="'/' + manga.uri"
           v-if="list.show"
         )
-          .img(v-if="manga.image"): img(:src="manga.image")
+          .img(v-if="manga.image")
+            object(:src="manga.image")
+              img(:src="'https://temp.compsci88.com/cover/' + manga.uri + '.jpg'")
           .data
             span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
             span.title {{manga.title}}
@@ -64,7 +66,14 @@ export default {
       this.reloadData()
     },
     reloadData() {
-      this.lists = this.$storage.get('lists')
+      const lists = this.$storage.get('lists')
+      //cleanLists
+      for(const key in lists) {
+        delete lists[key].show
+        delete lists[key].itemsParsed
+      }
+      this.$storage.set('lists', lists)
+      this.lists = JSON.parse(JSON.stringify(lists))
       this.mangas = this.$storage.get('mangas')
     }
   }
