@@ -2,6 +2,7 @@ import '../dotenv.mjs'
 import express from 'express'
 import search from './search.mjs'
 import mangaData from './fetcher.mjs'
+import user from './user.mjs'
 
 const app = express()
 const PORT = process.env.PORT
@@ -36,6 +37,16 @@ app.post('/api/search', async (req, res) => {
 
 app.get('/api/', (_req, res) => {
   res.json({ message: 'Hello world' })
+})
+
+app.post('/api/signup', async (req, res) => {
+  const { username, password, phone } = req.body
+  res.json(await user.signup(username, password, phone))
+})
+
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body
+  res.json(await user.signup(username, password))
 })
 
 app.listen(PORT, () => {

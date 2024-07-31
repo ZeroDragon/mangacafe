@@ -123,11 +123,7 @@
     border 1px solid rgba(255, 255, 255, 0.1)
     background-color transparent
     border-radius: 20px
-    &::placeholder, &
-      color var(--foreground)
-    &::placeholder
-      opacity 0.5
-      font-weight normal
+    color var(--foreground)
   .matches
     padding-top: 20px
     width 60%

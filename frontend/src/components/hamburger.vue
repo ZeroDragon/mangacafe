@@ -25,9 +25,11 @@
             .data
               span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
               span.title {{manga.title}}
+    //- user
 </template>
 <script>
 import axios from 'axios'
+import user from './user.vue'
 export default {
   data() {
     return {
@@ -75,6 +77,9 @@ export default {
       this.lists = JSON.parse(JSON.stringify(lists))
       this.mangas = this.$storage.get('mangas')
     }
+  },
+  components: {
+    user
   }
 }
 </script>
@@ -90,6 +95,8 @@ export default {
   padding 10px
   z-index 100
   transition right 0.5s
+  display flex
+  flex-direction column
   &.displaying
     border-left 1px solid var(--primary)
     box-shadow 0 0 10px #000
@@ -98,6 +105,8 @@ export default {
     position absolute
     left -35px
     cursor pointer
+.lists
+  flex-grow 1
 .list .name
   font-size 1.2em
   font-weight 400
