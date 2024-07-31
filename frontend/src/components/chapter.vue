@@ -20,9 +20,8 @@
     a(:href="'/' + prev.uri" v-if="prev", ref="prev") Prev
     a(:href="'/' + next.uri" v-if="next" ref="next") Next
   +nav
-  div(v-for="image in pages" v-bind:key="image")
-    object(:src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
-      img(:src="imageBase[1] + `${image}`.padStart(3, '0') + '.png'")
+  object(v-for="image in pages" v-bind:key="image" :src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
+    img(:src="imageBase[1] + `${image}`.padStart(3, '0') + '.png'")
   +nav
   .vSpacer
   .progressBar: .fill(v-bind:style="{width: `${progress}%`}")
