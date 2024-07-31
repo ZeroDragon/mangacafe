@@ -22,9 +22,13 @@ const getMetaData = (name, url) => {
 }
 
 const transformer = async (manga, chapter, season) => {
-  const url = `${ORIGIN}/rss/${manga}.xml`
-  const { error, json } = await fetchXmlData(url)
-  if (error) return { error }
+  if (!cache.get(manga)) {
+    const url = `${ORIGIN}/rss/${manga}.xml`
+    const { error, json } = await fetchXmlData(url)
+    if (error) return { error }
+    cache.set({ key: manga, value: json })
+  }
+  const json = cache.get(manga)
   const response = {}
   const [ item ] = json.rss.channel
   response.title = item.title[0]

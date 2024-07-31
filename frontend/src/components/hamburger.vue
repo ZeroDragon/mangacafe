@@ -12,18 +12,19 @@
         .name(@click="toggleList(list)")
           | {{list.display}} 
           span.count ({{list.items.length}})
-        a.manga(
-          v-for="(manga, mkey) in list.itemsParsed"
-          :key="mkey"
-          :href="'/' + manga.uri"
-          v-if="list.show"
-        )
-          .img(v-if="manga.image")
-            object(:src="manga.image")
-              img(:src="'https://temp.compsci88.com/cover/' + manga.uri + '.jpg'")
-          .data
-            span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
-            span.title {{manga.title}}
+        TransitionGroup(tag="div", name="mangaList")
+          a.manga(
+            v-for="manga in list.itemsParsed"
+            :key="manga.uri"
+            :href="'/' + manga.uri"
+            v-if="list.show"
+          )
+            .img(v-if="manga.image")
+              object(:src="manga.image")
+                img(:src="'https://temp.compsci88.com/cover/' + manga.uri + '.jpg'")
+            .data
+              span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
+              span.title {{manga.title}}
 </template>
 <script>
 import axios from 'axios'
@@ -36,25 +37,23 @@ export default {
     }
   },
   methods: {
-    updateList(list) {
-      list.itemsParsed = list.items.map(_ => ({ title: 'loading...' }))
-      Promise.all(list.items.map(async manga => {
-        const { data: { data } } = await axios.get(`${__API__}/manga/${manga}`)
-        return {...data, id: manga }
-      })).then(data => {
-        list.itemsParsed = data.map(itm => {
-          const { lastRead } = this.mangas[itm.id] || { lastRead: 0 }
-          const lastChapter = itm.chapters[0]
-          const newChapters = Math.max(0, lastChapter.index - lastRead)
-          return {
-            newChapters,
-            title: itm.title,
-            image: itm.image,
-            uri: itm.id
-          }
-        })
-        list.itemsParsed.sort((a, b) => b.newChapters - a.newChapters)
+    async listSeries (result, [current, ...rest]) {
+      if(!current) return result.sort((a, b) => b.newChapters - a.newChapters)
+      const { data: { data } } = await axios.get(`${__API__}/manga/${current}`)
+      const { lastRead } = this.mangas[current] || { lastRead: 0 }
+      const lastChapter = data.chapters[0]
+      const newChapters = Math.max(0, lastChapter.index - lastRead)
+      result.push({
+        newChapters,
+        title: data.title,
+        image: data.image,
+        uri: current
       })
+      this.listSeries(result, rest)
+    },
+    updateList(list) {
+      list.itemsParsed = []
+      this.listSeries(list.itemsParsed, list.items)
     },
     toggleList(list) {
       list.show = !list.show
@@ -136,6 +135,15 @@ export default {
   font-size 20px
   .icn
     margin-right 10px
+
+.mangaList-move, .mangaList-enter-active, .mangaList-leave-active
+  transition all 0.5s ease
+.mangaList-enter-from, .mangaList-leave-to
+  opacity 0
+  transform translateX(30px)
+.mangaList-leave-active
+  position absolute
+
 @media (max-width 600px)
   .menu
     width 100%
