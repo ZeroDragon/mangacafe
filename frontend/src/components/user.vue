@@ -73,7 +73,8 @@ export default {
       phone: '',
       register: false,
       errorMessage: '',
-      botName: __BOT_NAME__
+      botName: __BOT_NAME__,
+      userLoaded: false
     }
   },
   methods: {

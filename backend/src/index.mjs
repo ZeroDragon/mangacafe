@@ -1,9 +1,9 @@
-import '../dotenv.mjs'
+import '../../dotenv.mjs'
 import './bot.mjs'
 import express from 'express'
 import search from './search.mjs'
 import mangaData from './fetcher.mjs'
-import user from './user.mjs'
+import user from './models/user.mjs'
 
 const app = express()
 const PORT = process.env.PORT

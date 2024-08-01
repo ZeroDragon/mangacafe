@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'mangacafe',
-      script: './server.mjs',
+      script: './src/index.mjs',
       instances: 1,
       max_memory_restart: '100M'
     }

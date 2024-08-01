@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api'
 const token = process.env.TELEGRAM_TOKEN
 const bot = new TelegramBot(token, { polling: true })
-import user from './user.mjs'
+import user from './models/user.mjs'
 
 const successLogin = (chatId, msg = 'How I we help you?') => {
   bot.sendMessage(chatId, msg, {
