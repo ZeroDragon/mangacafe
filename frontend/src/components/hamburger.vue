@@ -12,7 +12,7 @@
         .name(@click="toggleList(list)")
           | {{list.display}} 
           span.count ({{list.items.length}})
-        TransitionGroup(tag="div", name="mangaList")
+        TransitionGroup(tag="div", name="mangaList").mangaList
           a.manga(
             v-for="manga in list.itemsParsed"
             :key="manga.uri"
@@ -152,6 +152,11 @@ export default {
 .mangaList-leave-active
   position absolute
 
+.mangaList
+  max-height 50vh
+  overflow-y auto
+  scrollbar-color var(--primary) var(--background)
+  scrollbar-width thin
 @media (max-width 600px)
   .menu
     width 100%
