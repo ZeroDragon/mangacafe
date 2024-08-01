@@ -5,15 +5,15 @@
     .icons
       .icon(@click="sync")
         span.material-symbols-outlined cloud
-        |&nbsp;Sync progress
+        |&nbsp;Sync {{progress}}
       .icon(@click="logout")
         |Logout&nbsp;
         span.material-symbols-outlined logout
   template(v-else)
-    span Create an account to sync your progress between devices
+    span Create an account to sync your progress between devices (this feature will be free while in development, bear in mind that data loss is possible while in beta)
     .error(v-if="errorMessage") {{errorMessage}}
     input(v-model="username", placeholder="Username")
-    input(v-model="password", placeholder="Password" type="password")
+    input(v-model="password", placeholder="Password" type="password" @keyup.enter="submit")
     template(v-if="register")
       input(v-model="phone", placeholder="Phone number" type="phone")
     .buttons
@@ -88,13 +88,14 @@ import axios from 'axios'
 export default {
   data() {
     return {
-      username: 'ZeroDragon',
-      password: 'abc123doremi',
+      username: '',
+      password: '',
       phone: '',
       register: false,
       errorMessage: '',
       botName: __BOT_NAME__,
-      userLoaded: false
+      userLoaded: false,
+      progress: ''
     }
   },
   methods: {
@@ -126,6 +127,7 @@ export default {
       this.userLoaded = false
     },
     async sync() {
+      this.progress = '10%'
       let response = await new Promise(resolve => {
         axios.get(`${__API__}/sync`, {
           headers: {
@@ -135,6 +137,13 @@ export default {
         .then(resolve)
         .catch(({ response }) => resolve(response))
       })
+      if (response.data.error) {
+        this.errorMessage = response.data.error
+        this.progress = 'not successful'
+        setTimeout(() => this.progress = '', 5000)
+        return
+      }
+      this.progress = '50%'
       const remote = response.data.remote || {settings: '{}', last_updated: 0}
       const local = JSON.parse(localStorage.appMemory || '{}')
       if (!local.lastUpdated) local.lastUpdated = 0
@@ -164,7 +173,15 @@ export default {
         .then(resolve)
         .catch(({ response }) => resolve(response))
       })
-      console.log(response)
+      if (response.data.error) {
+        this.errorMessage = response.data.error
+        this.progress = 'not successful'
+        setTimeout(() => this.progress = '', 5000)
+        return
+      }
+      this.progress = '100%'
+      window.location.href = '/'
+      setTimeout(() => this.progress = '', 5000)
     }
   },
   beforeMount() {

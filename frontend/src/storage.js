@@ -60,7 +60,6 @@ export default {
       },
       load: _ => {
         if (localStorage.appMemory) {
-          console.log('loading')
           const fromMem = JSON.parse(localStorage.appMemory)
           store.state.mangas = fromMem.mangas || {}
           store.state.lists = fromMem.lists || {}
