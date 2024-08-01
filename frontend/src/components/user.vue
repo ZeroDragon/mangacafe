@@ -1,17 +1,28 @@
 <template lang="pug">
 .userSection
-  .error(v-if="errorMessage") {{errorMessage}}
-  input(v-model="username", placeholder="Username")
-  input(v-model="password", placeholder="Password" type="password")
-  template(v-if="register")
-    input(v-model="phone", placeholder="Phone number" type="phone")
-  .buttons
-    span.button(@click="submit") {{register ? 'Register' : 'Login'}}
-    span(@click="toggleRegister") {{register ? 'I already have an account' : 'Need an account?'}}
-  details(v-if="register")
-    summary Important notice for lost passwords
-    div We will only use your phone to send you a code to reset your password using <span class="important">TELEGRAM</span>. And we don't validate it in any way. If you enter a wrong number, you won't be able to reset your password in case you forget it. Make sure that your password is in international format. Example: +1234567890
-  a(v-else :href="'https://t.me/' + botName + '/?start=forgottenpassword'" target="_blank") Click here to reset your password.
+  .template(v-if="userLoaded")
+    span Welcome back, {{username}}
+    .icons
+      .icon(@click="sync")
+        span.material-symbols-outlined cloud
+        |&nbsp;Sync progress
+      .icon(@click="logout")
+        |Logout&nbsp;
+        span.material-symbols-outlined logout
+  template(v-else)
+    span Create an account to sync your progress between devices
+    .error(v-if="errorMessage") {{errorMessage}}
+    input(v-model="username", placeholder="Username")
+    input(v-model="password", placeholder="Password" type="password")
+    template(v-if="register")
+      input(v-model="phone", placeholder="Phone number" type="phone")
+    .buttons
+      span.button(@click="submit") {{register ? 'Register' : 'Login'}}
+      span(@click="toggleRegister") {{register ? 'I already have an account' : 'Need an account?'}}
+    details(v-if="register")
+      summary Important notice for lost passwords
+      div We will only use your phone to send you a code to reset your password using <span class="important">TELEGRAM</span>. And we don't validate it in any way. If you enter a wrong number, you won't be able to reset your password in case you forget it. Make sure that your password is in international format. Example: +1234567890
+    a(v-else :href="'https://t.me/' + botName + '/?start=forgottenpassword'" target="_blank") Click here to reset your password.
 </template>
 <style lang="stylus" scoped>
 span
@@ -62,14 +73,23 @@ details
       font-weight bold
       color var(--foreground)
       background-color var(--primary)
+.icons
+  display flex
+  justify-content space-between
+  margin-top: 10px
+  .icon
+    cursor pointer
+    display flex
+    align-items center
+    font-size 14px
 </style>
 <script>
 import axios from 'axios'
 export default {
   data() {
     return {
-      username: '',
-      password: '',
+      username: 'ZeroDragon',
+      password: 'abc123doremi',
       phone: '',
       register: false,
       errorMessage: '',
@@ -81,19 +101,78 @@ export default {
     async submit() {
       this.errorMessage = ''
       const option = this.register ? 'signup' : 'login'
-      const response = await axios.post(`${__API__}/${option}`, {
-        username: this.username,
-        password: this.password,
-        phone: this.phone
+      const response = await new Promise(resolve => {
+        axios.post(`${__API__}/${option}`, {
+          username: this.username,
+          password: this.password,
+          phone: this.phone
+        })
+        .then(resolve)
+        .catch(({ response }) => resolve(response))
       })
       if (response.data.error) this.errorMessage = response.data.error
       if (response.data.success) {
-        console.log('success')
+        localStorage.token = response.data.token
+        localStorage.username = this.username
+        this.userLoaded = true
       }
     },
     toggleRegister() {
       this.register = !this.register
     },
+    logout() {
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      this.userLoaded = false
+    },
+    async sync() {
+      let response = await new Promise(resolve => {
+        axios.get(`${__API__}/sync`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.token}`
+          }
+        })
+        .then(resolve)
+        .catch(({ response }) => resolve(response))
+      })
+      const remote = response.data.remote || {settings: '{}', last_updated: 0}
+      const local = JSON.parse(localStorage.appMemory || '{}')
+      if (!local.lastUpdated) local.lastUpdated = 0
+      const remoteData = JSON.parse(remote.settings)
+      const newData = remote.last_updated >= local.lastUpdated ? remoteData : local
+      const oldData = remote.last_updated < local.lastUpdated ? remoteData : local
+      const merged = {
+        ...oldData,
+        ...newData,
+        lastUpdated: Math.max(remote.last_updated, local.lastUpdated)
+      }
+      localStorage.appMemory = JSON.stringify(merged)
+      const lastUpdated = merged.lastUpdated
+      delete merged.mangaLoaded
+      delete merged.displaySettings
+      delete merged.lastUpdated
+      this.$storage.load()
+      response = await new Promise(resolve => {
+        axios.post(`${__API__}/sync`, {
+          settings: JSON.stringify(merged),
+          lastUpdated
+        }, {
+          headers: {
+            Authorization: `Bearer ${localStorage.token}`
+          }
+        })
+        .then(resolve)
+        .catch(({ response }) => resolve(response))
+      })
+      console.log(response)
+    }
+  },
+  beforeMount() {
+    const token = localStorage.token
+    if (token) {
+      this.userLoaded = true
+      this.username = localStorage.username
+    }
   }
 }
 </script>

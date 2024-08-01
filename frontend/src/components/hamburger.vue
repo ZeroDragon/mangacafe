@@ -73,7 +73,6 @@ export default {
         delete lists[key].show
         delete lists[key].itemsParsed
       }
-      this.$storage.set('lists', lists)
       this.lists = JSON.parse(JSON.stringify(lists))
       this.mangas = this.$storage.get('mangas')
     }

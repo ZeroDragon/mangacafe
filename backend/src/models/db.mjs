@@ -26,14 +26,14 @@ Promise.all([
   createTable('user_data', `
     CREATE TABLE user_data (
       id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL UNIQUE,
       settings TEXT,
+      last_updated INTEGER,
       CONSTRAINT user_data_users_FK FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE);
   `)
 ]).then(results => {
   results.forEach(result => {
     if (result.error) throw result.error
-    console.log(result.info)
   })
 })
 

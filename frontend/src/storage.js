@@ -33,6 +33,9 @@ export default {
     const manager = {
       set: (key, value) => {
         store.state[key] = value
+        if (['mangas', 'lists'].includes(key)) {
+          store.state.lastUpdated = new Date().getTime()
+        }
         manager.save()
       },
       get: (key) => {
@@ -43,11 +46,24 @@ export default {
         manager.save()
       },
       save: _ => {
-        localStorage.appMemory = JSON.stringify(store.state)
+        const items = Object.values(store.state.lists)
+          .reduce((acc, list) => {
+            acc.push(...list.items)
+            return acc
+          }, [])
+        if (
+          Object.keys(store.state.mangas).length !== 0 &&
+          items.length !== 0
+        ) {
+          localStorage.appMemory = JSON.stringify(store.state)
+        }
       },
       load: _ => {
         if (localStorage.appMemory) {
-          store.state = JSON.parse(localStorage.appMemory)
+          console.log('loading')
+          const fromMem = JSON.parse(localStorage.appMemory)
+          store.state.mangas = fromMem.mangas || {}
+          store.state.lists = fromMem.lists || {}
         }
       }
     }
