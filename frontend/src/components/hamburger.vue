@@ -25,7 +25,7 @@
             .data
               span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
               span.title {{manga.title}}
-    //- user
+    user
 </template>
 <script>
 import axios from 'axios'

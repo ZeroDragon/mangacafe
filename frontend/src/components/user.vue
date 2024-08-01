@@ -10,8 +10,8 @@
     span(@click="toggleRegister") {{register ? 'I already have an account' : 'Need an account?'}}
   details(v-if="register")
     summary Important notice for lost passwords
-    div We will only use your phone to send you a code to reset your password using <span class="important">TELEGRAM</span>. And we don't validate it in any way. If you enter a wrong number, you won't be able to reset your password in case you forget it.
-  a(v-else href="https://t.me/mangacafebot?start=/forgottenpassword") Click here to reset your password.
+    div We will only use your phone to send you a code to reset your password using <span class="important">TELEGRAM</span>. And we don't validate it in any way. If you enter a wrong number, you won't be able to reset your password in case you forget it. Make sure that your password is in international format. Example: +1234567890
+  a(v-else :href="'https://t.me/' + botName + '/?start=forgottenpassword'" target="_blank") Click here to reset your password.
 </template>
 <style lang="stylus" scoped>
 span
@@ -72,19 +72,23 @@ export default {
       password: '',
       phone: '',
       register: false,
-      errorMessage: ''
+      errorMessage: '',
+      botName: __BOT_NAME__
     }
   },
   methods: {
     async submit() {
+      this.errorMessage = ''
       const option = this.register ? 'signup' : 'login'
       const response = await axios.post(`${__API__}/${option}`, {
         username: this.username,
         password: this.password,
         phone: this.phone
       })
-      console.log(response.data)
-      this.errorMessage = 'Invalid username or password'
+      if (response.data.error) this.errorMessage = response.data.error
+      if (response.data.success) {
+        console.log('success')
+      }
     },
     toggleRegister() {
       this.register = !this.register

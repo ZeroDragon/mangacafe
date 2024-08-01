@@ -1,4 +1,5 @@
 import '../dotenv.mjs'
+import './bot.mjs'
 import express from 'express'
 import search from './search.mjs'
 import mangaData from './fetcher.mjs'
@@ -40,13 +41,14 @@ app.get('/api/', (_req, res) => {
 })
 
 app.post('/api/signup', async (req, res) => {
+  console.log('here')
   const { username, password, phone } = req.body
   res.json(await user.signup(username, password, phone))
 })
 
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body
-  res.json(await user.signup(username, password))
+  res.json(await user.login(username, password))
 })
 
 app.listen(PORT, () => {

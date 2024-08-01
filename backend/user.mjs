@@ -1,54 +1,85 @@
-class SmallFish {
-  constructor (ttl = 86.4e6) {
-    this.memory = {}
-    this.ttl = ttl
-    this.timer = setInterval(() => {
-      Object.keys(this.memory).forEach((key) => {
-        if (this.memory[key].ttl) {
-          if (Date.now() - this.memory[key].timestamp > this.memory[key].ttl) {
-            delete this.memory[key]
-          }
-        }
-      })
-    }, 3e5)
-  }
-
-  set = (params) => {
-    this.memory[params.key] = {}
-    this.memory[params.key].timestamp = Date.now()
-    this.memory[params.key].ttl = params.ttl || this.ttl
-    if (Array.isArray(params.value)) return this.memory[params.key].value = params.value
-    this.memory[params.key] = params.value
-  }
-
-  get = (key) => {
-    return this.memory[key] || null
-  }
-}
-
-const cache = new SmallFish()
+import md5 from 'md5'
+import db from './db.mjs'
 
 const signup = async (username, password, phone) => {
-  console.log(username, password, phone)
-  return { success: true }
+  const { error: phoneError, data: userByPhone } = await getByPhone(phone)
+  const { error: usernameError, data: userByUsername } = await getByUsername(username)
+  if (phoneError || usernameError) {
+    console.error(phoneError || usernameError)
+    return { error: 'Unexpected error!' }
+  }
+  if (userByPhone) return { error: 'Phone number already exists!' }
+  if (userByUsername) return { error: 'Username already exists!' }
+
+  const hashedPassword = md5(password)
+  // Insert user data into the database
+  return new Promise(resolve => {
+    db.run('INSERT INTO users (username, password, phone) VALUES (?, ?, ?)', [username, hashedPassword, phone], (err) => {
+      if (err) {
+        console.error(err)
+        resolve({ error: 'Error while creating user, try again later.' })
+      }
+      resolve({ success: true })
+    })
+  })
 }
 
 const login = async (username, password) => {
-  console.log(username, password)
-  return { success: true }
+  const hashedPassword = md5(password)
+  return new Promise(resolve => {
+    db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, hashedPassword], (err, row) => {
+      if (err) {
+        console.error(err)
+        resolve({ error: 'Error while log in, try again later.' })
+      }
+      if (row) return resolve({ success: true })
+      resolve({ error: 'Invalid username or password' })
+    })
+  })
 }
 
-const update = async (username, data) => {
-
+const getBy = (selector, match) => {
+  // Get user data from the database
+  return new Promise(resolve => {
+    db.get(`SELECT * FROM users WHERE ${selector} = ?`, [match], (err, row) => {
+      if (err) {
+        console.error(err)
+        return resolve({ error: err })
+      }
+      resolve({ data: row })
+    })
+  })
 }
 
-const changeUsername = async (username, newUsername) => {
-
+const update = (destination, value, selector, match) => {
+  return new Promise(resolve => {
+    db.run(`UPDATE users SET ${destination} = ? WHERE ${selector} = ?`, [value, match], (err) => {
+      if (err) {
+        console.error(err)
+        return resolve({ error: err })
+      }
+      resolve({ success: true })
+    })
+  })
 }
+
+const changePassword = (telegramId, password) => {
+  const hashedPassword = md5(password)
+  return new Promise(resolve => {
+    db.run('UPDATE users SET password = ? WHERE telegram_id = ?', [hashedPassword, telegramId], (err) => {
+      if (err) {
+        console.error(err);
+        return resolve({ error: err });
+      }
+      resolve({ success: true });
+    });
+  });
+};
 
 export default {
   signup,
   login,
+  getBy,
   update,
-  changeUsername
+  changePassword
 }
