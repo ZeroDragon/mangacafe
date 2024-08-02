@@ -22,7 +22,7 @@
     details(v-if="register")
       summary Important notice for lost passwords
       div We will only use your phone to send you a code to reset your password using <span class="important">TELEGRAM</span>. And we don't validate it in any way. If you enter a wrong number, you won't be able to reset your password in case you forget it. Make sure that your password is in international format. Example: +1234567890
-    a(v-else :href="'https://t.me/' + botName + '/?start=forgottenpassword'" target="_blank") Click here to reset your password.
+    a(v-else :href="'https://t.me/' + botName" target="_blank") Click here to reset your password.
 </template>
 <style lang="stylus" scoped>
 span
