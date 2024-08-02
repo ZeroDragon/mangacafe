@@ -2,8 +2,8 @@ import md5 from 'md5'
 import db from './db.mjs'
 
 const signup = async (username, password, phone) => {
-  const { error: phoneError, data: userByPhone } = await getByPhone(phone)
-  const { error: usernameError, data: userByUsername } = await getByUsername(username)
+  const { error: phoneError, data: userByPhone } = await getBy('phone', phone)
+  const { error: usernameError, data: userByUsername } = await getBy('username', username)
   if (phoneError || usernameError) {
     console.error(phoneError || usernameError)
     return { error: 'Unexpected error!' }
