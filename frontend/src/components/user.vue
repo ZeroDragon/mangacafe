@@ -113,6 +113,10 @@ export default {
       })
       if (response.data.error) this.errorMessage = response.data.error
       if (response.data.success) {
+        if (option === 'signup') {
+          this.register = false
+          return this.submit()
+        }
         localStorage.token = response.data.token
         localStorage.username = this.username
         this.userLoaded = true

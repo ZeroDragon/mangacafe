@@ -1,6 +1,7 @@
 <template lang="pug">
   .menu(:class="{displaying: displaying}")
     .icon: span.material-symbols-outlined(@click="toggleMenu") {{menuIcon}}
+    .icon.refresh: span.material-symbols-outlined(@click="refresh" v-if="displaying") refresh
     a(href="/").section
       span.icn.material-symbols-outlined home
       | Go Home
@@ -75,6 +76,9 @@ export default {
       }
       this.lists = JSON.parse(JSON.stringify(lists))
       this.mangas = this.$storage.get('mangas')
+    },
+    async refresh() {
+      document.location.reload()
     }
   },
   components: {
@@ -104,6 +108,8 @@ export default {
     position absolute
     left -35px
     cursor pointer
+    &.refresh
+      bottom 10px
 .lists
   flex-grow 1
 .list .name

@@ -14,7 +14,7 @@ class Auth {
       .toUpperCase()
   }
 
-  _data2string (data, timestamp = new Date().getTime(), expiration = 315.36e8) {
+  _data2string (data, timestamp = new Date().getTime(), expiration = 1000 * 60 * 60 * 24 * 365) {
     const payload = {
       timestamp: parseInt(this.meta.timestamp, 10) || timestamp,
       expiration: parseInt(this.meta.expiration, 10) || expiration,
