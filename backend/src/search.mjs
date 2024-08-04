@@ -52,6 +52,7 @@ const fetch = async _ => {
   })
   return json
 }
+await fetch()
 
 const search = async (query) => {
   if (!query) return { error: 'No query provided' }

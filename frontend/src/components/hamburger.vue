@@ -1,7 +1,8 @@
 <template lang="pug">
-  .menu(:class="{displaying: displaying}")
+  .menuIcons
     .icon: span.material-symbols-outlined(@click="toggleMenu") {{menuIcon}}
     .icon.refresh: span.material-symbols-outlined(@click="refresh" v-if="displaying") refresh
+  .menu(:class="{displaying: displaying}")
     a(href="/").section
       span.icn.material-symbols-outlined home
       | Go Home
@@ -9,23 +10,29 @@
       span.icn.material-symbols-outlined list
       | My manga lists
     .lists
+      .indicators: .indicator(v-for="(list, key) in lists" :key="key", :class="{active: list.active}")
       .list(v-for="(list, key) in lists" :key="key")
-        .name(@click="toggleList(list)")
-          | {{list.display}} 
-          span.count ({{list.items.length}})
-        TransitionGroup(tag="div", name="mangaList").mangaList
-          a.manga(
-            v-for="manga in list.itemsParsed"
-            :key="manga.uri"
-            :href="'/' + manga.uri"
-            v-if="list.show"
-          )
-            .img(v-if="manga.image")
-              object(:src="manga.image")
-                img(:src="'https://temp.compsci88.com/cover/' + manga.uri + '.jpg'")
-            .data
-              span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
-              span.title {{manga.title}}
+        template(v-if="list.active")
+          .name
+            span.material-symbols-outlined.listNav(@click="moveList('prev')") arrow_back
+            span(@click="toggleList(list)")
+              |{{list.display}} 
+              span.count  ({{list.items.length}})
+            span.material-symbols-outlined.listNav(@click="moveList('next')") arrow_forward
+          TransitionGroup(tag="div", name="mangaList").mangaList
+          .mangaList
+            a.manga(
+              v-for="manga in list.itemsParsed"
+              :key="manga.uri"
+              :href="'/' + manga.uri"
+              v-if="list.show"
+            )
+              .img(v-if="manga.image")
+                object(:src="manga.image")
+                  img(:src="'https://temp.compsci88.com/cover/' + manga.uri + '.jpg'")
+              .data
+                span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
+                span.title {{manga.title}}
     user
 </template>
 <script>
@@ -54,6 +61,22 @@ export default {
       })
       this.listSeries(result, rest)
     },
+    moveList (direction) {
+      const current = Object.entries(this.lists).find(([key, { active }]) => active)
+      const currentIndex = this.listsNames.indexOf(current[0])
+      const thisList = this.lists[current[0]]
+      let nextIndex = (currentIndex + 1) % this.listsNames.length
+      if (direction === 'prev') {
+        nextIndex = (currentIndex - 1 + this.listsNames.length) % this.listsNames.length
+      }
+      const nextList = this.lists[this.listsNames[nextIndex]]
+      thisList.active = false
+      thisList.show = true
+      this.toggleList(thisList)
+      nextList.active = true
+      thisList.show = false
+      this.toggleList(nextList)
+    },
     updateList(list) {
       list.itemsParsed = []
       this.listSeries(list.itemsParsed, list.items)
@@ -65,16 +88,21 @@ export default {
     toggleMenu() {
       this.displaying = !this.displaying
       this.menuIcon = this.displaying ? 'close' : 'menu'
-      this.reloadData()
+      document.getElementsByTagName('body')[0].style.overflow = this.displaying ? 'hidden' : 'auto'
+      if(this.displaying) this.reloadData()
     },
     reloadData() {
       const lists = this.$storage.get('lists')
+      this.listsNames = Object.keys(lists)
       //cleanLists
       for(const key in lists) {
         delete lists[key].show
         delete lists[key].itemsParsed
       }
       this.lists = JSON.parse(JSON.stringify(lists))
+      this.lists.reading.active = true
+      this.lists.reading.show = false
+      this.toggleList(this.lists.reading)
       this.mangas = this.$storage.get('mangas')
     },
     async refresh() {
@@ -87,6 +115,17 @@ export default {
 }
 </script>
 <style lang="stylus" scoped>
+.menuIcons
+  position fixed
+  top 15px
+  right 5px
+  z-index 101
+  .icon
+    position absolute
+    left -35px
+    cursor pointer
+    &.refresh
+      left -65px
 .menu
   --offset 10px
   position fixed
@@ -100,25 +139,41 @@ export default {
   transition right 0.5s
   display flex
   flex-direction column
+  overflow-y auto
+  scrollbar-color var(--primary) var(--background)
+  scrollbar-width thin
   &.displaying
     border-left 1px solid var(--primary)
     box-shadow 0 0 10px #000
     right 0
-  .icon
-    position absolute
-    left -35px
-    cursor pointer
-    &.refresh
-      bottom 10px
 .lists
   flex-grow 1
 .list .name
   font-size 1.2em
   font-weight 400
-  margin-left var(--offset)
+  text-align center
+  display flex
+  justify-content space-between
+  align-items center
+  margin-bottom 10px
   .count
     font-size 0.8em
     opacity 0.5
+  .listNav
+    cursor pointer
+    margin 0 5px
+    font-size 0.8em
+    color var(--primary)
+.indicators
+  display flex
+  .indicator
+    flex-grow 1
+    height 5px
+    background-color var(--primary)
+    margin 5px 0
+    opacity 0.5
+    &.active
+      opacity 1
 .list .manga
   margin-left calc(var(--offset) * 2)
   display flex
@@ -159,7 +214,6 @@ export default {
   position absolute
 
 .mangaList
-  max-height 50vh
   overflow-y auto
   scrollbar-color var(--primary) var(--background)
   scrollbar-width thin
@@ -167,10 +221,13 @@ export default {
   .menu
     width 100%
     right -100%
+    padding-bottom 25px
     &.displaying
       right 0
       .icon
         left 90%
+        &.refresh
+          top 40px
   .list .manga
     .data .title
       max-width 280px

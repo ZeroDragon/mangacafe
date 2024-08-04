@@ -11,7 +11,6 @@
         @keyup="updateAction"
         ref="searchInput"
       )
-      //- .btn Search
     .noMatches(v-if="!matches.length && search.length > 3 && !searching") No matches found >.<
     .matches
       a.match(
@@ -81,7 +80,6 @@
     flex-direction column
     height 100vh
   .header
-    position relative
     display flex
     justify-content center
     align-items center
@@ -98,11 +96,11 @@
       left 0
       right 0
       bottom 0
-      background-image url('/header.png')
+      background-image url('/full.jpg')
       background-size cover
-      background-position center
+      background-position 80% 50%
       z-index -1
-      opacity 0.5
+      opacity 0.1
       border-radius 10px
   .inputZone
     position relative
@@ -112,7 +110,7 @@
       left 10px
       top 50%
       transform translateY(-50%)
-      color rgba(255,255,255,0.1)
+      color rgba(255,255,255,0.3)
   input
     width: 100%
     font-size 20px
@@ -120,7 +118,7 @@
     text-align left
     outline none
     font-weight bold
-    border 1px solid rgba(255, 255, 255, 0.1)
+    border 1px solid rgba(255, 255, 255, 0.3)
     background-color transparent
     border-radius: 20px
     color var(--foreground)
