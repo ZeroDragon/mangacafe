@@ -1,0 +1,7 @@
+PORT "API port"
+TELEGRAM_TOKEN "get one with @BotFather"
+TELEGRAM_BOT "your bot name"
+ORIGIN "where is the origin of your manga"
+DB_PATH "location of your database"
+API "url to this api"
+SECRET "to sign the jwt"

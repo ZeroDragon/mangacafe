@@ -44,7 +44,6 @@ app.get('/api/', (_req, res) => {
 })
 
 app.post('/api/signup', async (req, res) => {
-  console.log('here')
   const { username, password, phone } = req.body
   res.json(await user.signup(username, password, phone))
 })
@@ -82,8 +81,8 @@ app.get('/api/sync', [verifyToken, getUser], async (req, res) => {
 })
 
 app.post('/api/sync', [verifyToken, getUser], async (req, res) => {
-  const { settings: bodySettings, lastUpdated } = req.body
-  const response = await settings.setUserSettings(res.username, {settings: bodySettings, lastUpdated})
+  const { settings: bodySettings } = req.body
+  const response = await settings.setUserSettings(res.username, { settings: bodySettings })
   if (response.error) return res.status(500).json({ error: 'Error while syncing' })
   res.json({ success: true, token: res.newToken })
 })

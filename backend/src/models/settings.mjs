@@ -26,8 +26,8 @@ const getUserSettings = async (username) => {
   })
 }
 
-const setUserSettings = async (username, { settings, lastUpdated }) => {
-  // return { success: true }
+const setUserSettings = async (username, { settings }) => {
+  const lastUpdated = new Date().getTime()
   const userSelect = await getUser(username)
   if (userSelect.error) return { error: 'Error while syncing' }
   return new Promise(resolve => {

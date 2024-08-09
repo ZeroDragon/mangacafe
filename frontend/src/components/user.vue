@@ -3,11 +3,14 @@
   .template(v-if="userLoaded")
     span Welcome back, {{username}}
     .icons
-      .icon(@click="sync")
-        span.material-symbols-outlined cloud
-        |&nbsp;Sync {{progress}}
+      .sync
+        span Sync {{progress}}
+        tooltip.icon(@click="syncUp" v-if="canUpload" position="up" text="Upload")
+          span.material-symbols-outlined cloud_upload
+        tooltip.icon(@click="syncDown" position="up" text="Download")
+          span.material-symbols-outlined cloud_download
       .icon(@click="logout")
-        |Logout&nbsp;
+        span Logout&nbsp;
         span.material-symbols-outlined logout
   template(v-else)
     span Create an account to sync your progress between devices (this feature will be free while in development, bear in mind that data loss is possible while in beta)
@@ -82,9 +85,16 @@ details
     display flex
     align-items center
     font-size 14px
+.sync
+  display flex
+  align-items center
+  .icon
+    margin-left 10px
 </style>
 <script>
 import axios from 'axios'
+import { sync } from '../storage.js'
+import tooltip from './tooltip.vue'
 export default {
   data() {
     return {
@@ -96,6 +106,11 @@ export default {
       botName: __BOT_NAME__,
       userLoaded: false,
       progress: ''
+    }
+  },
+  computed: {
+    canUpload() {
+      return localStorage.appMemory
     }
   },
   methods: {
@@ -130,61 +145,27 @@ export default {
       localStorage.removeItem('username')
       this.userLoaded = false
     },
-    async sync() {
+    async syncUp () {
       this.progress = '10%'
-      let response = await new Promise(resolve => {
-        axios.get(`${__API__}/sync`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.token}`
-          }
-        })
-        .then(resolve)
-        .catch(({ response }) => resolve(response))
-      })
-      if (response.data.error) {
-        this.errorMessage = response.data.error
-        this.progress = 'not successful'
-        setTimeout(() => this.progress = '', 5000)
-        return
-      }
+      if (!localStorage.appMemory) return
+      const response = await sync.upload()
+      this.afterSync(response.error)
+    },
+    async syncDown () {
+      this.progress = '10%'
+      const response = await sync.download()
+      this.afterSync(response.error, true)
+    },
+    afterSync (error, download) {
       this.progress = '50%'
-      const remote = response.data.remote || {settings: '{}', last_updated: 0}
-      const local = JSON.parse(localStorage.appMemory || '{}')
-      if (!local.lastUpdated) local.lastUpdated = 0
-      const remoteData = JSON.parse(remote.settings)
-      const newData = remote.last_updated >= local.lastUpdated ? remoteData : local
-      const oldData = remote.last_updated < local.lastUpdated ? remoteData : local
-      const merged = {
-        ...oldData,
-        ...newData,
-        lastUpdated: Math.max(remote.last_updated, local.lastUpdated)
-      }
-      localStorage.appMemory = JSON.stringify(merged)
-      const lastUpdated = merged.lastUpdated
-      delete merged.mangaLoaded
-      delete merged.displaySettings
-      delete merged.lastUpdated
-      this.$storage.load()
-      response = await new Promise(resolve => {
-        axios.post(`${__API__}/sync`, {
-          settings: JSON.stringify(merged),
-          lastUpdated
-        }, {
-          headers: {
-            Authorization: `Bearer ${localStorage.token}`
-          }
-        })
-        .then(resolve)
-        .catch(({ response }) => resolve(response))
-      })
-      if (response.data.error) {
-        this.errorMessage = response.data.error
+      if (error) {
+        this.errorMessage = error
         this.progress = 'not successful'
         setTimeout(() => this.progress = '', 5000)
         return
       }
       this.progress = '100%'
-      window.location.href = '/'
+      if (download) document.location.reload()
       setTimeout(() => this.progress = '', 5000)
     }
   },
@@ -194,6 +175,9 @@ export default {
       this.userLoaded = true
       this.username = localStorage.username
     }
+  },
+  components: {
+    tooltip
   }
 }
 </script>

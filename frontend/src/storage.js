@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import axios from 'axios'
 
 const store = reactive({
   state: {
@@ -28,14 +29,48 @@ const store = reactive({
   }
 })
 
-export default {
+const sync = {
+  upload: async _ => {
+    const data = JSON.parse(localStorage.appMemory)
+    delete data.mangaLoaded
+    delete data.displaySettings
+    delete data.lastUpdated
+    return await new Promise(resolve => {
+      axios.post(`${__API__}/sync`, {
+        settings: JSON.stringify(data),
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.token}`
+        }
+      })
+      .then(resolve)
+      .catch(({ response }) => resolve(response))
+    })
+  },
+  download: async _ => {
+    const response = await new Promise(resolve => {
+      axios.get(`${__API__}/sync`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.token}`
+        }
+      })
+      .then(resolve)
+      .catch(({ response }) => resolve(response))
+    })
+    if (response.data) {
+      const { remote: { settings: data }, token } = response.data
+      localStorage.token = token
+      localStorage.appMemory = data
+    }
+    return response
+  }
+}
+
+const storage = {
   install: (app) => {
     const manager = {
       set: (key, value) => {
         store.state[key] = value
-        if (['mangas', 'lists'].includes(key)) {
-          store.state.lastUpdated = new Date().getTime()
-        }
         manager.save()
       },
       get: (key) => {
@@ -70,3 +105,6 @@ export default {
     app.config.globalProperties.$storage = manager
   }
 }
+
+export default storage
+export { sync }

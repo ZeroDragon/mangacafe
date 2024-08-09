@@ -58,6 +58,11 @@
       this.pages = data.pages
       this.index = data.index
       this.mangaFromMem = this.$storage.get('mangas')[this.manga] || { lastRead: 0 }
+      this.mangaFromMem.lastRead = this.index
+      this.$storage.set('mangas', {
+        ...this.$storage.get('mangas'),
+        [this.manga]: this.mangaFromMem
+      })
     },
     mounted () {
       window.addEventListener('keydown', this.handleKeyDown)
@@ -69,11 +74,6 @@
     },
     methods: {
       goNext () {
-        this.mangaFromMem.lastRead = this.index + 1
-        this.$storage.set('mangas', {
-          ...this.$storage.get('mangas'),
-          [this.manga]: this.mangaFromMem
-        })
         this.$refs.next.click()
       },
       goPrev () {
