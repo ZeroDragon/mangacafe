@@ -16,10 +16,10 @@ const getUserSettings = async (username) => {
   const userSelect = await getUser(username)
   if (userSelect.error) return { error: 'Error while syncing' }
   return new Promise(resolve => {
-    db.get(`SELECT settings, last_updated FROM user_data WHERE id = ?`, [userSelect.data.id], (err, row) => {
+    db.get(`SELECT settings, last_updated FROM user_data WHERE user_id = ?`, [userSelect.data.id], (err, row) => {
       if (err) {
-      console.error(err)
-      return resolve({ error: err })
+        console.error(err)
+        return resolve({ error: err })
       }
       resolve({ data: row })
     })
