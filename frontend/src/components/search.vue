@@ -12,6 +12,7 @@
         ref="searchInput"
       )
     .noMatches(v-if="!matches.length && search.length > 3 && !searching") No matches found >.<
+    .randomBtn(v-if="search.length === 0" @click="goRandom") Or try a random manga
     .matches
       a.match(
         v-for="match in matches", v-bind:key="match.guid"
@@ -63,6 +64,12 @@
         if (this.timer) clearTimeout(this.timer)
         this.searching = true
         this.timer = setTimeout(this.searchManga, 500)
+      },
+      async goRandom() {
+        const url = `${__API__}/random/`
+        const { data: { error, results } } = await axios.get(url)
+        if (!results) return
+        document.location.href = `/${results}`
       }
     },
     mounted() {
@@ -142,6 +149,13 @@
       background-color var(--primary)
     img
       margin-right 10px
+  .randomBtn
+    padding: 10px
+    border-radius 5px
+    margin-top 20px
+    background-color var(--primary)
+    color var(--foreground)
+    cursor pointer
   @media (max-width: 600px)
     .inputZone, .matches
       width 90%

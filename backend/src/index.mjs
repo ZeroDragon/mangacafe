@@ -1,7 +1,7 @@
 import express from 'express'
 import '../../dotenv.mjs'
 import './bot.mjs'
-import search from './search.mjs'
+import search, { cache } from './search.mjs'
 import mangaData from './fetcher.mjs'
 import user from './models/user.mjs'
 import settings from './models/settings.mjs'
@@ -39,8 +39,10 @@ app.post('/api/search', async (req, res) => {
   res.json(await search(req.body.query.toLowerCase()))
 })
 
-app.get('/api/', (_req, res) => {
-  res.json({ message: 'Hello world' })
+app.get('/api/random', async (req, res) => {
+  const items = cache.memory.search.value
+  const random = items[Math.floor(Math.random() * items.length)]
+  res.json({ results: random.i })
 })
 
 app.post('/api/signup', async (req, res) => {
@@ -85,6 +87,10 @@ app.post('/api/sync', [verifyToken, getUser], async (req, res) => {
   const response = await settings.setUserSettings(res.username, { settings: bodySettings })
   if (response.error) return res.status(500).json({ error: 'Error while syncing' })
   res.json({ success: true, token: res.newToken })
+})
+
+app.get('/api/', (_req, res) => {
+  res.json({ message: 'Hello world' })
 })
 
 app.listen(PORT, () => {
