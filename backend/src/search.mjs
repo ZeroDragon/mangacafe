@@ -2,7 +2,7 @@ import axios from 'axios'
 const ORIGIN = process.env.ORIGIN
 
 class SmallFish {
-  constructor (ttl = 86.4e6) {
+  constructor (ttl = 18e5) { // 30 minutes
     this.memory = {}
     this.ttl = ttl
     this.timer = setInterval(() => {
