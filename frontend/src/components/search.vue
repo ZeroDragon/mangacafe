@@ -1,6 +1,6 @@
 <template lang="pug">
   .search
-    .header Manga Café
+    .header: img(src="/small2.png")
     .inputZone
       span.material-symbols-outlined search
       input(
@@ -96,6 +96,10 @@
     height 200px
     font-size: 50px
     font-weight bold
+    img
+      width 100%
+      height 100%
+      object-fit contain
     &:before
       content ''
       position absolute
