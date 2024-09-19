@@ -1,7 +1,7 @@
 <template lang="pug">
   .header: img(:src="image")
   h1
-    a(href="/"): img(src="/small2.png").logo
+    a(href="/"): img(src="/small.png").logo
     span.mangaTitle {{ title }}
   .manga(v-if="title")
     .meta
