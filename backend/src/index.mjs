@@ -91,7 +91,7 @@ app.post('/api/sync', [verifyToken, getUser], async (req, res) => {
 
 app.get('/api/kill', (_req, res) => {
   res.send('Killing in the name of')
-  throw new Error('Killing in the name of')
+  process.exit(0)
 })
 
 app.get('/api/', (_req, res) => {
