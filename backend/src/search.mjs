@@ -57,8 +57,11 @@ const search = async (query) => {
   const { error, response } = await fetch(query)
   if (error) return { error }
 
+  await Promise.all(response.map(item => {
+    return downloadImage(item)
+  }))
+
   const results = response.map(item => {
-    downloadImage(item)
     return [item.id, item.attributes.title.en]
   })
 

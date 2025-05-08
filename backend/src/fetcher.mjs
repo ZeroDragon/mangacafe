@@ -31,7 +31,8 @@ const transformer = async (manga, chapter) => {
   const response = {}
   response.title = json.mangaInfo.title.en
   response.image = `${process.env.API}/manga/cover/${manga}`
-  response.description = json.mangaInfo.description.es
+  response.description = json.mangaInfo.description.es || json.mangaInfo.description.en
+  response.status = json.mangaInfo.status
   response.chapters = json.chapters.map((chapter, index, self) => {
     return {
       pubDate: chapter.attributes.publishAt,

@@ -29,7 +29,7 @@
             )
               .img(v-if="manga.image")
                 object(:src="manga.image")
-                  img(:src="'https://temp.compsci88.com/cover/' + manga.uri + '.jpg'")
+                  img(:src="manga.image")
               .data
                 span.new(v-if="manga.newChapters > 0") {{manga.newChapters}} unread!
                 span.title {{manga.title}}
