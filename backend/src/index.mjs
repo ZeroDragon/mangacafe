@@ -30,14 +30,14 @@ app.get('/api/manga/cover/:manga', (req, res) => {
   res.sendFile(image)
 })
 
-app.get('/api/manga/:manga/:chapter?/:season?', (req, res) => {
-  const { manga, chapter, season } = req.params
-  mangaData(manga, season, chapter)
+app.get('/api/manga/:manga/:chapter?', (req, res) => {
+  const { manga, chapter } = req.params
+  mangaData(manga, chapter)
     .then(data => {
       res.json(data)
     })
     .catch(error => {
-      console.error('Error fetching XML:', error)
+      console.error('Error fetching origin:', error)
       res.status(500).send
     })
 })

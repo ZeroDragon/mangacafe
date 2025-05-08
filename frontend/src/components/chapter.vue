@@ -45,8 +45,8 @@
       }
     },
     async beforeMount () {
-      const { manga, chapter, season } = this.$route.params
-      const uri = [manga, chapter, season].filter(itm => itm !== '').join('/')
+      const { manga, chapter } = this.$route.params
+      const uri = [manga, chapter].filter(itm => itm !== '').join('/')
       this.manga = manga
       const { data: { data } } = await axios.get(`${__API__}/manga/${uri}`)
       this.prev = data.prev

@@ -13,7 +13,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: search },
     { path: '/:manga', component: manga },
-    { path: '/:manga/:chapter/:season?', component: chapter}
+    { path: '/:manga/:chapter', component: chapter}
   ]
 })
 const app = createApp({

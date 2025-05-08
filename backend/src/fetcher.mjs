@@ -12,97 +12,66 @@ const leftPad = (str, len, ch = '0') => {
   return construct.join('.')
 }
 
-const getMetaData = (name, url) => {
-  const [,chapter,,index] = url.split('/')
-    .pop()
-    .replace(`${name}-`, '')
-    .replace('-page-1.html', '')
-    .split('-')
-  return { chapter, index }
-}
-
-const transformer = async (manga, chapter, season) => {
+const transformer = async (manga, chapter) => {
   if (!cache.get(manga)) {
-    const url = `${ORIGIN}/rss/${manga}.xml`
-    const { error, json } = await fetchXmlData(url)
-    if (error) return { error }
-    cache.set({ key: manga, value: json })
+    const getChapters = async (limit = 0) => {
+      const _url = `${ORIGIN}manga/${manga}/feed?translatedLanguage[]=es-la&order[chapter]=desc`
+      const { data } = await axios.get(`${_url}&limit=${limit}`)
+      if (!data) return { error: 'No data' }
+      if (limit === 0) {
+        const total = data.total
+        return await getChapters(total)
+      }
+      return data.data
+    }
+    const chapters = await getChapters()
+    const url = `${ORIGIN}manga/${manga}`
+    const mangaInfo = (await axios.get(url)).data.data.attributes
+    if (!chapters) return { error: 'No chapters' }
+    cache.set({ key: manga, value: { chapters, mangaInfo } })
   }
+
   const json = cache.get(manga)
   const response = {}
-  const [ item ] = json.rss.channel
-  response.title = item.title[0]
-  response.image = item.image[0].url[0]
-  response.chapters = item.item.map((item, i, s) => {
-    const { chapter, index } = getMetaData(manga, item.link[0])
-    const indexName = index ? `S${index}` : null
+  response.title = json.mangaInfo.title.en
+  response.image = `${process.env.API}/manga/cover/${manga}`
+  response.description = json.mangaInfo.description.es
+  response.chapters = json.chapters.map(chapter => {
     return {
-      title: item.title[0],
-      chapter,
-      pubDate: item.pubDate[0],
-      link: item.link[0],
-      uri: [manga, chapter, indexName].filter(itm => itm).join('/'),
-      index: s.length - i
+      pubDate: chapter.attributes.publishAt,
+      title: chapter.attributes.chapter,
+      uri: [manga, chapter.id].join('/')
     }
   })
-  if (chapter) {
-    const [chap] = response.chapters.filter(chp => chp.uri === [manga, chapter, season].filter(itm => itm).join('/'))
-    const index = response.chapters.findIndex(chp => chp.uri === chap.uri)
-    const { chapterInfo, pathName } = await chapterData(chap.link)
-    response.curPath = pathName
-    response.chapterInfo = chapterInfo
-    response.index = chap.index
-    Object.entries({ prev: 1, next: -1 }).forEach(([key, value]) => {
-      response[key] = response.chapters[index + value]
-      if (response[key]) {
-        delete response[key].link
-        delete response[key].title
-        delete response[key].pubDate
-      }
-    })
-    delete response.chapters
-    delete response.image
-  } else {
-    response.chapters = response.chapters.map(chapter => {
-      delete chapter.link
-      return chapter
-    })
-  }
+  // if (chapter) {
+  //   const [chap] = response.chapters.filter(chp => chp.uri === [manga, chapter, season].filter(itm => itm).join('/'))
+  //   const index = response.chapters.findIndex(chp => chp.uri === chap.uri)
+  //   const { chapterInfo, pathName } = await chapterData(chap.link)
+  //   response.curPath = pathName
+  //   response.chapterInfo = chapterInfo
+  //   response.index = chap.index
+  //   Object.entries({ prev: 1, next: -1 }).forEach(([key, value]) => {
+  //     response[key] = response.chapters[index + value]
+  //     if (response[key]) {
+  //       delete response[key].link
+  //       delete response[key].title
+  //       delete response[key].pubDate
+  //     }
+  //   })
+  //   delete response.chapters
+  //   delete response.image
+  // } else {
+  //   response.chapters = response.chapters.map(chapter => {
+  //     delete chapter.link
+  //     return chapter
+  //   })
+  // }
   return { ...response }
 }
 
-const fetchXmlData = async url => {
-  const xmlData = await new Promise(resolve => {
-    try {
-      axios.get(url)
-      .then(response => {
-        resolve({ data: response.data })
-      })
-      .catch(error => {
-        console.error('Error fetching XML:', error)
-        resolve({ error })
-      })
-    } catch (error) {
-      console.error('Error fetching XML:', error)
-      resolve({ error })
-    }
-  })
-  if (xmlData.error) return { error: xmlData.error.message }
-  const json = await new Promise(resolve => {
-    parseString(xmlData.data, (error, result) => {
-      if (error) {
-        console.error('Error parsing XML:', error)
-        resolve({ error })
-      }
-      resolve(result)
-    })
-  })
-  return { json }
-}
-
-const mangaData = async (manga, season, chapter) => {
+const mangaData = async (manga, chapter) => {
   const { error, data } = await new Promise(resolve => {
-    transformer(manga, chapter, season)
+    transformer(manga, chapter)
       .then(data => {
         resolve({ data })
       })
@@ -112,29 +81,7 @@ const mangaData = async (manga, season, chapter) => {
       })
   })
   if (error) return { error }
-  let imageBase = null
-  if (chapter) {
-    const chapterPadded = leftPad(chapter, 4)
-    const path = [manga, season, chapterPadded].filter(itm => itm).join('/')
-    const pathAlt = [
-      manga,
-      data.chapterInfo.bucket,
-      chapterPadded
-    ].filter(itm => itm !== '').join('/')
-    imageBase = [`https://${data.curPath}/manga/${path}-`, `https://${data.curPath}/manga/${pathAlt}-`]
-    data.pages = data.chapterInfo.page
-    delete data.chapterInfo
-    delete data.curPath
-  } else {
-    const mangaInfo = cache.memory?.search?.value?.find(item => item.i === manga)
-    if (mangaInfo && !mangaInfo.metaData) {
-      const { status, description, error } = await metaData(manga)
-      if (!error) mangaInfo.metaData = { status, description }
-    }
-    data.description = mangaInfo?.metaData?.description
-    data.status = mangaInfo?.metaData?.status
-  }
-  return { data: {...data, imageBase} }
+  return { data }
 }
 
 export default mangaData
