@@ -12,7 +12,7 @@
         ref="searchInput"
       )
     .noMatches(v-if="!matches.length && search.length > 3 && !searching") No matches found >.<
-    .randomBtn(v-if="search.length === 0" @click="goRandom") Or try a random manga
+    //- .randomBtn(v-if="search.length === 0" @click="goRandom") Or try a random manga
     .matches
       a.match(
         v-for="match in matches", v-bind:key="match.guid"
@@ -53,7 +53,7 @@
           .map(([guid, title]) => ({
             guid,
             title,
-            image: `https://temp.compsci88.com/cover/${guid}.jpg`
+            image: `${__API__}/manga/cover/${guid}`
           }))
         this.searching = false
       },

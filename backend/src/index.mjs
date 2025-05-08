@@ -1,7 +1,7 @@
 import express from 'express'
 import '../../dotenv.mjs'
 import './bot.mjs'
-import search, { cache } from './search.mjs'
+import search, { cache, cover } from './search.mjs'
 import mangaData from './fetcher.mjs'
 import user from './models/user.mjs'
 import settings from './models/settings.mjs'
@@ -21,6 +21,13 @@ app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   next()
+})
+
+app.get('/api/manga/cover/:manga', (req, res) => {
+  const { image, error } = cover(req.params.manga)
+  if (error) return res.status(404).json({ error })
+  res.set('Content-Type', 'image/jpeg')
+  res.sendFile(image)
 })
 
 app.get('/api/manga/:manga/:chapter?/:season?', (req, res) => {

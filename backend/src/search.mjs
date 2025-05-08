@@ -1,19 +1,12 @@
 import axios from 'axios'
+import { writeFileSync, existsSync, mkdirSync } from 'fs'
+import path from 'path'
 const ORIGIN = process.env.ORIGIN
 
 class SmallFish {
   constructor (ttl = 18e5) { // 30 minutes
     this.memory = {}
     this.ttl = ttl
-    this.timer = setInterval(() => {
-      Object.keys(this.memory).forEach((key) => {
-        if (this.memory[key].ttl) {
-          if (Date.now() - this.memory[key].timestamp > this.memory[key].ttl) {
-            delete this.memory[key]
-          }
-        }
-      })
-    }, 3e5)
   }
 
   set = (params) => {
@@ -25,23 +18,28 @@ class SmallFish {
   }
 
   get = (key) => {
+    const ttl = this.memory[key]?.ttl || 0
+    if (ttl && ttl + this.memory[key].timestamp < new Date().getTime()) {
+      delete this.memory[key]
+      return null
+    }
     return this.memory[key] || null
   }
 }
 
 const cache = new SmallFish()
 
-const fetch = async _ => {
-  const query = 'search'
+const fetch = async _query => {
+  const query = encodeURIComponent(_query)
   const cached = cache.get(query)?.value
   if (cached) return { response: cached }
 
   const json = await new Promise(resolve => {
-    axios.get(`${ORIGIN}/_search.php`)
+    axios.get(`${ORIGIN}manga?title=${query}&includes[]=cover_art`)
       .then(response => {
         cache.set({
           key: query,
-          value: response.data
+          value: response.data.data
         })
         resolve({ response: cache.get(query).value })
       })
@@ -52,23 +50,35 @@ const fetch = async _ => {
   })
   return json
 }
-await fetch()
 
 const search = async (query) => {
   if (!query) return { error: 'No query provided' }
   if (query.length < 3) return { error: 'Query too short' }
-  const { error, response } = await fetch()
+  const { error, response } = await fetch(query)
   if (error) return { error }
 
-  const results = response
-    .filter(item => {
-      const lefts = [item.i, item.s, ...item.a].map(str => str.toLowerCase()).join('')
-      return lefts.includes(query)
-    })
-    .map(item => [item.i, item.s])
+  const results = response.map(item => {
+    downloadImage(item)
+    return [item.id, item.attributes.title.en]
+  })
 
   return { results }
 }
+const downloadImage = async (item) => {
+  const cover = item.relationships.find(rel => rel.type === 'cover_art')
+  const image = `https://uploads.mangadex.org/covers/${item.id}/${cover.attributes.fileName}`
+  if (!existsSync(`./mangas/${item.id}/`)) {
+    mkdirSync(`./mangas/${item.id}/`, { recursive: true })
+  }
+  if (!existsSync(`./mangas/${item.id}/cover.jpg`)) {
+    const { data } = await axios.get(image, { responseType: 'arraybuffer' })
+    writeFileSync(`./mangas/${item.id}/cover.jpg`, data)
+  }
+}
+const cover = (manga) => {
+  if (!existsSync(`./mangas/${manga}/cover.jpg`)) return { error: 'No cover found' }
+  return { image: path.resolve(`./mangas/${manga}/cover.jpg`) }
+}
 
 export default search
-export { cache }
+export { cache, cover }
