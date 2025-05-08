@@ -29,7 +29,9 @@ const transformer = async (manga, chapter) => {
 
   const json = cache.get(manga)
   const response = {}
-  response.title = json.mangaInfo.title.en
+  const engTitles = json.mangaInfo.altTitles.filter(item => item.en)
+  const engTitle = (engTitles.pop() || {}).en
+  response.title = engTitle || json.mangaInfo.title.en || 'No title'
   response.image = `${process.env.API}/manga/cover/${manga}`
   response.description = json.mangaInfo.description.es || json.mangaInfo.description.en
   response.status = json.mangaInfo.status

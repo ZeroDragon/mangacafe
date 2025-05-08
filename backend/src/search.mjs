@@ -62,7 +62,9 @@ const search = async (query) => {
   }))
 
   const results = response.map(item => {
-    return [item.id, item.attributes.title.en]
+    const engTitles = item.attributes.altTitles.filter(item => item.en)
+    const engTitle = (engTitles.pop() || {}).en
+    return [item.id, engTitle || item.attributes.title.en || 'No title']
   })
 
   return { results }
