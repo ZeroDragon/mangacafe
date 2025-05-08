@@ -1,4 +1,6 @@
 import express from 'express'
+import { existsSync } from 'fs'
+import path from 'path'
 import '../../dotenv.mjs'
 import './bot.mjs'
 import search, { cache, cover } from './search.mjs'
@@ -28,6 +30,16 @@ app.get('/api/manga/cover/:manga', (req, res) => {
   if (error) return res.status(404).json({ error })
   res.set('Content-Type', 'image/jpeg')
   res.sendFile(image)
+})
+
+app.get('/api/manga/images/:manga/:chapter/:image', (req, res) => {
+  const { manga, chapter, image } = req.params
+  const imagesLocation = `./mangas/${manga}/${chapter}/`
+  if (!existsSync(imagesLocation)) return res.status(404).json({ error: 'No images' })
+  const imagePath = `${imagesLocation}${image}`
+  if (!existsSync(imagePath)) return res.status(404).json({ error: 'No image' })
+  const [, ext] = image.split('.')
+  res.sendFile(path.resolve(imagePath), { headers: { 'Content-Type': `image/${ext}` } })
 })
 
 app.get('/api/manga/:manga/:chapter?', (req, res) => {
