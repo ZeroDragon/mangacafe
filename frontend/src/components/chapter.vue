@@ -5,7 +5,7 @@
         .a(
           v-if="prev"
           @click="goPrev"
-        ) Prev: {{prev.chapter}}
+        ) Prev: {{prev.title}}
         .noEntry(v-else) Prev: None
       .curr
         | Current: {{ chapter }}
@@ -13,15 +13,18 @@
         .a(
           v-if="next"
           @click="goNext"
-        ) Next: {{next.chapter}}
+        ) Next: {{next.title}}
         .noEntry(v-else) Next: None
   .title: a(:href="'/' + manga") {{mangaTitle}}
   template.noShow
     a(:href="'/' + prev.uri" v-if="prev", ref="prev") Prev
     a(:href="'/' + next.uri" v-if="next" ref="next") Next
   +nav
-  object(v-for="image in pages" v-bind:key="image" :src="imageBase[0] + `${image}`.padStart(3, '0') + '.png'")
-    img(:src="imageBase[1] + `${image}`.padStart(3, '0') + '.png'")
+  template(v-if="loading")
+    img.loader(src="/small.png")
+    | Loading...
+  object(v-for="image in pages" v-bind:key="image" :src="image")
+    img(:src="image")
   +nav
   .vSpacer
   .progressBar: .fill(v-bind:style="{width: `${progress}%`}")
@@ -38,10 +41,10 @@
         images: [],
         prev: {},
         next: {},
-        imageBase: null,
         loading: true,
         pages: 0,
-        progress: 0
+        progress: 0,
+        index: 0
       }
     },
     async beforeMount () {
@@ -51,9 +54,8 @@
       const { data: { data } } = await axios.get(`${__API__}/manga/${uri}`)
       this.prev = data.prev
       this.next = data.next
-      this.chapter = chapter
+      this.chapter = data.chapter
       this.mangaTitle = data.title
-      this.imageBase = data.imageBase
       this.loading = false
       this.pages = data.pages
       this.index = data.index
@@ -148,4 +150,7 @@
       width 0%
       height 5px
       background-color var(--primary)
+  img.loader
+    width 100px!important
+    margin auto
 </style>

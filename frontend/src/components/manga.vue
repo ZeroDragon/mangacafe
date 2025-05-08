@@ -20,8 +20,10 @@
       )
         a(:href="chapter.uri")
           span
-            span.entry \#{{chapters.length - key}} 
-            | {{ chapter.title.replace(title, '') }}
+            span.entry
+              | \#{{chapters.length - key}}
+              img(:src="`/${chapter.lang}.svg`")
+            span {{ chapter.title.replace(title, '') }}
           span {{ chapter.pubDate}}
 </template>
 <script>
@@ -62,10 +64,10 @@
       this.image = data.image
       this.description = data.description
       this.status = data.status
-      this._chapters = data.chapters.map((chapter, index) => {
-        const { uri, title, pubDate: date } = chapter
+      this._chapters = data.chapters.map((chapter) => {
+        const { uri, title, pubDate: date, lang } = chapter
         const pubDate = new Date(date).toLocaleDateString()
-        return { uri, title, pubDate }
+        return { uri, title, pubDate, lang }
       })
       this.curPath = data.curPath
       this.title = data.title
@@ -143,6 +145,10 @@
   .entry
     font-weight 300
     font-size 10px
+    img
+      width 15px
+      height 15px
+      margin 0 5px
   .bar
     display flex
     justify-content space-between
