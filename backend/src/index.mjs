@@ -191,12 +191,31 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
   })
 })
 
+// --- Detalle de serie (Épica 6) ---
+// Feed de items de una serie (ordenados por pub_date DESC), con flag seen.
+app.get('/api/series/:id/feed', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { data } = await series.getById(req.params.id, res.userId)
+  if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
+  const onlyPending = req.query.pending === '1'
+  const { error, data: items } = await seriesItem.listBySeries(req.params.id, { onlyPending })
+  if (error) return res.status(500).json({ error })
+  res.json({ data: items, token: res.newToken })
+})
+
+// Marca un item como visto (valida ownership del item vía su serie).
+app.post('/api/series/:id/items/:itemId/seen', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { data } = await series.getById(req.params.id, res.userId)
+  if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
+  const result = await seriesItem.markSeen(req.params.itemId, res.userId)
+  if (result.error) return res.status(404).json({ error: 'Item not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
 // Marca todos los items pendientes de una serie como vistos.
-// Opcionalmente avanza current_chapter al last_known_total (decisión: avanza).
 app.post('/api/series/:id/seen-all', [verifyToken, getUser, resolveUserId], async (req, res) => {
   const { data } = await series.getById(req.params.id, res.userId)
   if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
-  const result = await seriesItem.markAllSeen(req.params.id)
+  const result = await seriesItem.markAllSeen(req.params.id, res.userId)
   if (result.error) return res.status(500).json({ error: result.error })
   res.json({ success: true, updated: result.updated, token: res.newToken })
 })

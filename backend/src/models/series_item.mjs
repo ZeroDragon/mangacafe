@@ -109,17 +109,21 @@ const dashboardByUser = (userId) => {
   })
 }
 
-const markSeen = (itemId) => {
+const markSeen = (itemId, userId) => {
   return new Promise(resolve => {
+    // Valida ownership vía JOIN con series (multiusuario, decisión 2)
     db.run(
-      `UPDATE series_items SET seen = 1 WHERE id = ?`,
-      [itemId],
+      `UPDATE series_items
+       SET seen = 1
+       WHERE id = ?
+         AND series_id IN (SELECT id FROM series WHERE user_id = ?)`,
+      [itemId, userId],
       function (err) {
         if (err) {
           console.error(err)
           return resolve({ error: err })
         }
-        if (this.changes === 0) return resolve({ error: 'Item not found' })
+        if (this.changes === 0) return resolve({ error: 'Item not found or not owned' })
         resolve({ success: true })
       }
     )
@@ -167,12 +171,16 @@ const listBySeries = (seriesId, { onlyPending = false } = {}) => {
   })
 }
 
-// Marca como vistos todos los items pendientes de una serie.
-const markAllSeen = (seriesId) => {
+// Marca como vistos todos los items pendientes de una serie (ownership check).
+const markAllSeen = (seriesId, userId) => {
   return new Promise(resolve => {
     db.run(
-      `UPDATE series_items SET seen = 1 WHERE series_id = ? AND seen = 0`,
-      [seriesId],
+      `UPDATE series_items
+       SET seen = 1
+       WHERE series_id = ?
+         AND seen = 0
+         AND series_id IN (SELECT id FROM series WHERE user_id = ?)`,
+      [seriesId, userId],
       function (err) {
         if (err) {
           console.error(err)
