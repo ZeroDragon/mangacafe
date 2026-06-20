@@ -1,6 +1,6 @@
 # Épica 4 — Motor RSS
 
-**Estado:** `[PENDING]`
+**Estado:** `[DONE]`
 **Objetivo:** Refrescar feeds RSS de las series, deduplicar items y mantener actualizado el conteo de pendientes y los errores visibles.
 
 **Depende de:** Épica 1 (tablas `series` + `series_items`).
@@ -11,47 +11,61 @@
 ## Alcance
 
 ### Parser
-- Usar `xml2js` (ya en deps) para parsear el feed, **o** evaluar `rss-parser` si simplifica. Decisión inicial: `xml2js` para no agregar deps.
-- Normalizar RSS 2.0 y Atom mínimamente (`<item>` / `<entry`>).
+- `xml2js` (sin agregar deps) en `backend/src/rss.mjs`.
+- Normaliza **RSS 2.0** (`<rss><channel><item>`) y **Atom** (`<feed><entry>`).
 
 ### Refresco de una serie (`refreshSeries(series)`)
-1. Si `rss_url` es NULL, salir.
-2. Fetch HTTP del feed (con `axios`, ya en deps, y un `User-Agent` + timeout configurables por env).
-3. Parsear items → `{ guid, title, link, pub_date }`.
-4. Insertar con `series_item.insertMany` (dedupe por `UNIQUE(series_id, guid)`).
-5. Actualizar `series.last_known_total`, `last_checked_at = now`, `last_error = NULL`.
-6. En fallo: setear `series.last_error = mensaje` (decisión 7), NO reventar el job entero.
+1. Si `rss_url` es NULL/empty → `{ skipped: true }`.
+2. `axios.get` con `User-Agent` configurable (`RSS_USER_AGENT`) y timeout (`RSS_TIMEOUT`).
+3. `parseFeed(xml)` → `{ guid, title, link, pub_date }`.
+4. `series_item.insertMany` (dedupe por `UNIQUE(series_id, guid)`).
+5. Actualiza `last_known_total`, `last_checked_at = now`, `last_error = NULL`.
+6. En fallo: `last_error = mensaje` (decisión 7), sin revienta el job.
 
 ### Scheduler
-- **Producción:** cada 6h (decisión 5). Opciones:
-  - Ajustar `cron_restart` de PM2 a `0 */6 * * *` (reinicia el proceso y corre un refresh-all al boot).
-  - **Preferido:** `setInterval` o `node-cron` interno que recorra todas las series con `rss_url` no NULL y `last_checked_at` viejo.
-- **Desarrollo (on-demand):** endpoint `POST /api/refresh` (protegido) que dispara el refresco de todas las series del usuario (o de una en particular vía `POST /api/series/:id/refresh`). Debe responder cuando termine o aceptar un flag `?wait=true`.
+- **`setInterval` interno** cada 6h (decisión 5) + refresh al boot (`runImmediately`). Arranca solo cuando `index.mjs` se ejecuta directamente (`if (isMain)`), no en tests.
+- Delay de 800ms entre fetches (rate-limit suave).
+- `setInterval.unref()` para no mantener vivo el proceso solo por el interval.
+
+### Endpoints on-demand (dev / UX)
+- `POST /api/refresh` — refresca las series del usuario actual.
+- `POST /api/series/:id/refresh` — refresca una sola serie (ownership → 404).
 
 ---
 
 ## Tareas
 
-- [ ] Crear `backend/src/rss.mjs` con `parseFeed(xml)` → array de items normalizados.
-- [ ] Crear `backend/src/refresher.mjs` con `refreshSeries(series)` y `refreshAll()` (recorre series con RSS).
-- [ ] Decidir estrategia cron (preferido: scheduler interno con `setInterval` cada 6h + job al boot).
-- [ ] Endpoint `POST /api/refresh` (on-demand, dev) con `[verifyToken, getUser]`.
-- [ ] Endpoint `POST /api/series/:id/refresh` para refrescar una sola serie.
-- [ ] Manejo de errores: timeouts, 4xx/5xx del origen, XML inválido → `last_error` con mensaje útil.
-- [ ] Env vars nuevas: `RSS_USER_AGENT`, `RSS_TIMEOUT` (documentarlas en `env_example` y `ARCHITECTURE.md`).
-- [ ] Rate limit / delays entre fetches para no ser baneado (p.ej. 1 req cada N ms).
+- [x] `backend/src/rss.mjs` con `parseFeed(xml)` → array de items normalizados (RSS 2.0 + Atom).
+- [x] `backend/src/refresher.mjs` con `refreshSeries`, `refreshAll`, `refreshByUser`, `startScheduler`, `stopScheduler`.
+- [x] Scheduler interno con `setInterval` cada 6h + refresh al boot.
+- [x] Endpoint `POST /api/refresh` (on-demand, por usuario) con `[verifyToken, getUser, resolveUserId]`.
+- [x] Endpoint `POST /api/series/:id/refresh` (ownership → 404).
+- [x] Manejo de errores: timeouts, 4xx/5xx del origen, XML inválido → `last_error` con mensaje útil, sin crash.
+- [x] Env vars nuevas: `RSS_USER_AGENT`, `RSS_TIMEOUT` en `env_example`.
+- [x] Rate limit entre fetches (800ms).
 
 ## Verificación
 
-- [ ] Serie con feed de prueba (p.ej. un RSS de un blog estable) → al refrescar, `series_items` se llena y `pendingCount > 0`.
-- [ ] Segundo refresco no duplica items (dedupe por guid).
-- [ ] Feed inexistente/inválido → `last_error` poblado, sin crash.
-- [ ] Serie sin `rss_url` → no se refresca ni marca error.
-- [ ] `POST /api/refresh` on-demand devuelve resultado y actualiza `last_checked_at`.
+- [x] Serie con feed de prueba RSS → 3 items, `pendingCount = 3`, `last_error = null`.
+- [x] Segundo refresco no duplica items (dedupe por guid, `inserted = 0`).
+- [x] Feed 500 / 404 → `last_error` poblado, sin crash.
+- [x] Serie sin `rss_url` → `{ skipped: true }`, no marca error.
+- [x] `POST /api/refresh` devuelve `{ refreshed, failed, total }` y actualiza `last_checked_at`.
+- [x] `POST /api/series/:id/refresh` serie ajena → 404.
+- [x] Atom feed parseado (con `<id>` como guid y `<link href>`).
+- [x] Item nuevo detectado entre fetches (dynamic feed).
 
-## Notas
+## Cómo reproducir la verificación
 
-- **User-Agent:** algunos sitios bloquean requests sin UA; usar uno realista configurable.
-- **pub_date:** parsear fechas RFC822 / ISO a epoch; si no viene, usar `created_at`.
-- **guid fallback:** si el item no trae `<guid>`, usar `link` (o hash de title+pub_date).
-- El conteo de pendientes se obtiene de Épica 1; aquí solo se insertan items nuevos.
+- **Backend (parser + refresher + endpoints):** `cd backend && node tests/smoke-rss-engine.mjs` (levanta un mini servidor HTTP de feeds RSS/Atom de prueba + la app, y cubre todo).
+
+## Notas de implementación
+
+- **User-Agent default:** si `RSS_USER_AGENT` no está en env, se usa `MangaCafeRSS/1.0 (+https://github.com/mangacafe)`.
+- **Timeout default:** 15s si `RSS_TIMEOUT` no está en env.
+- **pub_date:** `Date.parse` para RFC822/ISO → epoch segundos. Si falla o no viene, se usa `now` (para no romper el ordenamiento).
+- **guid fallback:** `<guid>` (RSS) / `<id>` (Atom) si existen, sino `link`, sino hash determinista de `title+pub_date` (prefijo `auto-`).
+- **Atom links:** soporta `<link rel="alternate" href="...">` con varios `<link>` (elige el `alternate` o el primero).
+- **Scheduler y tests:** `startScheduler` se llama en `index.mjs` solo bajo `if (isMain)`. Los tests importan la `app` sin que arranque el scheduler ni el `listen`.
+- **`refresher.mjs`** importa `db` directamente para el `refreshAll` global (todas las series con RSS de todos los usuarios). El endpoint por usuario usa `series.listByUser(userId)` para respetar ownership.
+- **Rate limit:** `sleep(800)` entre cada fetch dentro de `refreshAll`/`refreshByUser` para no ser baneado por los sitios origen.

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import '../../dotenv.mjs'
 import user from './models/user.mjs'
 import series from './models/series.mjs'
+import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
 
 const app = express()
@@ -143,11 +144,29 @@ app.delete('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req,
   res.json({ success: true, token: res.newToken })
 })
 
+// --- RSS (Épica 4) ---
+// On-demand para el usuario actual: refresca todas SUS series con rss_url.
+app.post('/api/refresh', [verifyToken, getUser, resolveUserId], async (_req, res) => {
+  const result = await refresher.refreshByUser(res.userId)
+  res.json({ ...result, token: res.newToken })
+})
+
+// Refresca una sola serie (debe pertenecer al usuario).
+app.post('/api/series/:id/refresh', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { data } = await series.getById(req.params.id, res.userId)
+  if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
+  const result = await refresher.refreshSeries(data)
+  if (result.error) return res.json({ success: false, error: result.error, token: res.newToken })
+  res.json({ success: true, ...result, token: res.newToken })
+})
+
 export { app }
 
 // Solo escucha cuando se ejecuta directamente (no al importarse en tests)
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
+  // Scheduler RSS: refresh al boot + cada 6h (Épica 4, decisión 5)
+  refresher.startScheduler({ runImmediately: true })
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
   })
