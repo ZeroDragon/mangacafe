@@ -1,5 +1,6 @@
 <template lang="pug">
-.series-detail(v-if="loaded")
+Loader(v-if="!loaded" text="Cargando serie…")
+.series-detail(v-else)
   .back
     router-link(:to="{ path: '/series' }") ‹ Volver a series
   header.head(v-if="series")
@@ -71,9 +72,11 @@
 
 <script>
 import api from '../api.js'
+import Loader from './Loader.vue'
 
 export default {
   name: 'SeriesDetail',
+  components: { Loader },
   data () {
     return {
       series: null,
@@ -120,16 +123,20 @@ export default {
       try {
         await api.post(`/api/series/${this.$route.params.id}/items/${it.id}/seen`)
         it.seen = 1
+        this.$toast.success('Marcado como visto')
       } catch (e) {
-        this.error = 'No se pudo marcar el item'
+        this.$toast.error('No se pudo marcar el item')
       }
     },
     async seenAll () {
       try {
-        await api.post(`/api/series/${this.$route.params.id}/seen-all`)
+        const res = await api.post(`/api/series/${this.$route.params.id}/seen-all`)
         await this.loadFeed()
+        const n = res.data.updated || 0
+        if (n > 0) this.$toast.success(`${n} capítulo(s) marcado(s) como visto`)
+        else this.$toast.info('No había items pendientes')
       } catch (e) {
-        this.error = 'No se pudo marcar todo'
+        this.$toast.error('No se pudo marcar todo')
       }
     },
     async refresh () {
@@ -137,8 +144,9 @@ export default {
       try {
         await api.post(`/api/series/${this.$route.params.id}/refresh`)
         await Promise.all([this.loadSeries(), this.loadFeed()])
+        this.$toast.success('Feed refrescado')
       } catch (e) {
-        this.error = 'No se pudo refrescar'
+        this.$toast.error('No se pudo refrescar')
       } finally {
         this.refreshing = false
       }
@@ -147,9 +155,10 @@ export default {
       if (!confirm(`¿Eliminar "${this.series.name}"? Se borrarán también sus items.`)) return
       try {
         await api.delete(`/api/series/${this.series.id}`)
+        this.$toast.success('Serie eliminada')
         this.$router.push('/series')
       } catch (e) {
-        this.error = 'No se pudo eliminar'
+        this.$toast.error('No se pudo eliminar')
       }
     },
     formatDate (epoch) {

@@ -109,8 +109,10 @@ export default {
       try {
         if (this.isEdit) {
           await api.put(`/api/series/${this.$route.params.id}`, payload)
+          this.$toast.success('Serie actualizada')
         } else {
           await api.post('/api/series', payload)
+          this.$toast.success('Serie creada')
         }
         this.$router.push('/series')
       } catch (e) {

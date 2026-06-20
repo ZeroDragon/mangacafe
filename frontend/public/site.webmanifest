@@ -1,6 +1,9 @@
 {
   "name": "Manga Café",
   "short_name": "Manga Café",
+  "description": "Tracker personal de lectura de mangas y episodios de anime vistos.",
+  "start_url": "/dashboard",
+  "scope": "/",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,7 +16,8 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#0f141c",
+  "theme_color": "#2b5278",
   "background_color": "#0f141c",
-  "display": "standalone"
+  "display": "standalone",
+  "orientation": "portrait"
 }

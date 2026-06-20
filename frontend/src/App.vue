@@ -3,14 +3,16 @@
   AppHeader(v-if="showHeader")
   main
     router-view
+  Toasts
 </template>
 
 <script>
 import AppHeader from './components/AppHeader.vue'
+import Toasts from './components/Toasts.vue'
 
 export default {
   name: 'App',
-  components: { AppHeader },
+  components: { AppHeader, Toasts },
   computed: {
     showHeader () {
       return this.$route.path !== '/login'

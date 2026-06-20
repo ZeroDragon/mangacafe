@@ -6,7 +6,7 @@
       span.material-symbols-outlined add
       span Nueva
   p.error(v-if="error") {{ error }}
-  .loading(v-if="loading") Cargando…
+  Loader(v-if="loading" skeleton)
   .empty(v-else-if="!series.length")
     span.material-symbols-outlined library_books
     p Aún no tenés series, agregá una.
@@ -25,10 +25,11 @@
 <script>
 import api from '../api.js'
 import SeriesCard from './SeriesCard.vue'
+import Loader from './Loader.vue'
 
 export default {
   name: 'SeriesList',
-  components: { SeriesCard },
+  components: { SeriesCard, Loader },
   data () {
     return {
       series: [],
@@ -60,8 +61,9 @@ export default {
       try {
         await api.delete(`/api/series/${series.id}`)
         this.series = this.series.filter(s => s.id !== series.id)
+        this.$toast.success(`Serie "${series.name}" eliminada`)
       } catch (e) {
-        this.error = (e.response && e.response.data && e.response.data.error) || 'No se pudo eliminar'
+        this.$toast.error((e.response && e.response.data && e.response.data.error) || 'No se pudo eliminar')
       }
     }
   }

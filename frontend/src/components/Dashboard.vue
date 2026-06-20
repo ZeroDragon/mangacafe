@@ -7,24 +7,44 @@
         span {{ summary.totalPending }} capítulo(s) pendiente(s)
         span.dot ·
         span {{ summary.withUpdates }} serie(s) con novedades
-    button.refresh(@click="refreshAll" :disabled="refreshing")
-      span.material-symbols-outlined {{ refreshing ? 'progress_activity' : 'sync' }}
-      span {{ refreshing ? 'Refrescando…' : 'Refrescar ahora' }}
+    .controls
+      .search
+        span.material-symbols-outlined search
+        input(
+          v-model="search"
+          type="search"
+          placeholder="Buscar por nombre…"
+          aria-label="Buscar series por nombre")
+      button.refresh(@click="refreshAll" :disabled="refreshing")
+        span.material-symbols-outlined {{ refreshing ? 'progress_activity' : 'sync' }}
+        span.label {{ refreshing ? 'Refrescando…' : 'Refrescar' }}
+
+  .filters(v-if="!loading && items.length")
+    button(
+      v-for="f in FILTERS"
+      :key="f.key"
+      :class="{ active: filter === f.key }"
+      @click="filter = f.key")
+      | {{ f.label }}
 
   p.error(v-if="error") {{ error }}
 
-  .loading(v-if="loading") Cargando…
+  Loader(v-if="loading" skeleton)
   .empty(v-else-if="!items.length")
     span.material-symbols-outlined library_books
     p Aún no tenés series, agregá una.
     router-link.cta(:to="{ path: '/series/new' }") Crear serie
-  .empty(v-else-if="!summary.totalPending")
+  .empty(v-else-if="!summary.totalPending && filter === 'all' && !search")
     span.material-symbols-outlined check_circle
     p ¡Estás al día! No tenés capítulos pendientes.
     router-link.cta(:to="{ path: '/series' }") Ver mis series
+  .empty.filtered(v-else-if="!filtered.length")
+    span.material-symbols-outlined search_off
+    p Ninguna serie coincide con el filtro.
+    button.reset(@click="resetFilters") Limpiar filtros
   .grid(v-else)
     article.card(
-      v-for="s in items"
+      v-for="s in filtered"
       :key="s.id"
       :class="{ error: s.last_error }")
       .cover
@@ -56,16 +76,42 @@
 
 <script>
 import api from '../api.js'
+import Loader from './Loader.vue'
+
+const FILTERS = [
+  { key: 'all', label: 'Todos' },
+  { key: 'manga', label: 'Manga' },
+  { key: 'anime', label: 'Anime' },
+  { key: 'pending', label: 'Con pendientes' },
+  { key: 'error', label: 'Con error' }
+]
 
 export default {
   name: 'Dashboard',
+  components: { Loader },
   data () {
     return {
       items: [],
       summary: { totalPending: 0, withUpdates: 0, total: 0 },
       loading: false,
       refreshing: false,
-      error: ''
+      error: '',
+      search: '',
+      filter: 'all',
+      FILTERS
+    }
+  },
+  computed: {
+    filtered () {
+      const q = this.search.trim().toLowerCase()
+      return this.items.filter(s => {
+        if (q && !s.name.toLowerCase().includes(q)) return false
+        if (this.filter === 'manga' && s.type !== 'manga') return false
+        if (this.filter === 'anime' && s.type !== 'anime') return false
+        if (this.filter === 'pending' && s.pending === 0) return false
+        if (this.filter === 'error' && !s.last_error) return false
+        return true
+      })
     }
   },
   mounted () {
@@ -90,19 +136,26 @@ export default {
       try {
         await api.post('/api/refresh')
         await this.fetch()
+        this.$toast.success('Feeds refrescados')
       } catch (e) {
-        this.error = 'No se pudo refrescar'
+        this.$toast.error('No se pudo refrescar')
       } finally {
         this.refreshing = false
       }
     },
     async markSeen (s) {
       try {
-        await api.post(`/api/series/${s.id}/seen-all`)
+        const res = await api.post(`/api/series/${s.id}/seen-all`)
         await this.fetch()
+        const n = res.data.updated || 0
+        if (n > 0) this.$toast.success(`${n} capítulo(s) marcado(s) como visto en "${s.name}"`)
       } catch (e) {
-        this.error = (e.response && e.response.data && e.response.data.error) || 'No se pudo marcar'
+        this.$toast.error('No se pudo marcar')
       }
+    },
+    resetFilters () {
+      this.search = ''
+      this.filter = 'all'
     },
     onCoverError (e) {
       e.target.style.display = 'none'
@@ -116,10 +169,10 @@ export default {
   margin-top 16px
 .bar
   display flex
-  align-items center
+  align-items flex-start
   justify-content space-between
   gap 12px
-  margin-bottom 16px
+  margin-bottom 12px
   flex-wrap wrap
 .title
   h1
@@ -130,6 +183,31 @@ export default {
     opacity 0.75
     .dot
       margin 0 6px
+.controls
+  display flex
+  gap 8px
+  align-items center
+  flex-wrap wrap
+.search
+  display flex
+  align-items center
+  gap 4px
+  background rgba(0,0,0,0.25)
+  border 1px solid rgba(255,255,255,0.1)
+  border-radius 6px
+  padding 0 8px
+  .material-symbols-outlined
+    font-size 18px
+    opacity 0.5
+  input
+    background transparent
+    border none
+    color var(--foreground)
+    padding 8px 4px
+    font-size 14px
+    width 200px
+    &:focus
+      outline none
 .refresh
   display inline-flex
   align-items center
@@ -148,6 +226,24 @@ export default {
     cursor not-allowed
   .material-symbols-outlined
     font-size 18px
+.filters
+  display flex
+  gap 6px
+  margin-bottom 12px
+  flex-wrap wrap
+  button
+    background rgba(255,255,255,0.04)
+    border 1px solid rgba(255,255,255,0.08)
+    color var(--foreground)
+    padding 5px 12px
+    border-radius 999px
+    cursor pointer
+    font-size 13px
+    &:hover
+      background rgba(255,255,255,0.08)
+    &.active
+      background var(--primary)
+      border-color var(--primary)
 .grid
   display grid
   grid-template-columns repeat(auto-fill, minmax(320px, 1fr))
@@ -277,7 +373,20 @@ export default {
     padding 10px 16px
     border-radius 6px
     font-size 14px
+  &.filtered .material-symbols-outlined
+    font-size 40px
+  .reset
+    background rgba(255,255,255,0.08)
+    border 1px solid rgba(255,255,255,0.12)
+    color var(--foreground)
+    padding 6px 12px
+    border-radius 6px
+    cursor pointer
+    font-size 13px
 .error
   color var(--danger)
   text-align center
+@media (max-width 560px)
+  .search input
+    width 140px
 </style>
