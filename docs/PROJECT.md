@@ -41,7 +41,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 |---|-------|--------|---------|
 | 0 | Limpieza del scaffolding | `[DONE]` | [epics/00-cleanup.md](epics/00-cleanup.md) |
 | 1 | Modelo de datos (`series`, `series_items`) | `[DONE]` | [epics/01-data-model.md](epics/01-data-model.md) |
-| 2 | Autenticación (bcrypt + guard + vistas) | `[PENDING]` | [epics/02-auth.md](epics/02-auth.md) |
+| 2 | Autenticación (bcrypt + guard + vistas) | `[DONE]` | [epics/02-auth.md](epics/02-auth.md) |
 | 3 | CRUD de series | `[PENDING]` | [epics/03-series-crud.md](epics/03-series-crud.md) |
 | 4 | Motor RSS | `[PENDING]` | [epics/04-rss-engine.md](epics/04-rss-engine.md) |
 | 5 | Dashboard de actualizaciones | `[PENDING]` | [epics/05-dashboard.md](epics/05-dashboard.md) |

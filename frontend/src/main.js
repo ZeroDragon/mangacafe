@@ -1,16 +1,16 @@
 import { createApp } from 'vue/dist/vue.esm-bundler'
-import { createRouter, createWebHistory } from 'vue-router'
 import storage from './storage.js'
-import home from './components/home.vue'
+import router from './router.js'
+import App from './App.vue'
+import { setUnauthorizedHandler } from './api.js'
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [
-    { path: '/', component: home }
-  ]
+setUnauthorizedHandler(() => {
+  if (router.currentRoute.value.path !== '/login') {
+    router.push('/login')
+  }
 })
 
-const app = createApp({})
+const app = createApp(App)
 app.use(storage)
 app.use(router)
 app.mount('#app')

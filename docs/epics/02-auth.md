@@ -1,6 +1,6 @@
 # Épica 2 — Autenticación
 
-**Estado:** `[PENDING]`
+**Estado:** `[DONE]`
 **Objetivo:** Migrar el hashing de passwords a `bcrypt`, exponer el usuario actual, y construir el flujo de login/signup en el frontend con protección de rutas.
 
 **Depende de:** ninguna (puede ir en paralelo con Épica 1).
@@ -25,24 +25,37 @@
 
 ## Tareas
 
-- [ ] Instalar `bcrypt` en `backend/`.
-- [ ] Reescribir `signup` en `user.mjs`: `bcrypt.hash(password, 10)` en vez de `md5`.
-- [ ] Reescribir `login`: traer el row por username y validar con `bcrypt.compare`.
-- [ ] Agregar `GET /api/me` con `[verifyToken, getUser]` → `{ username, token: res.newToken }`.
-- [ ] Crear `frontend/src/api.js` (helper axios con `__API__`, interceptor de `Authorization` y handler de 401).
-- [ ] Crear `frontend/src/components/Login.vue` (form con toggle login/signup, llama `/api/login` o `/api/signup`).
-- [ ] Agregar rutas `/login` (pública) y `/dashboard` (protegida, placeholder por ahora).
-- [ ] Agregar guard global en el router: `if (!localStorage.token && to.path !== '/login') redirect('/login')`.
-- [ ] Layout: componente `AppHeader.vue` con username + botón logout.
-- [ ] Token rotation: guardar `res.newToken` en `localStorage.token` tras cada llamada autenticada exitosa.
+- [x] Instalar `bcrypt` en `backend/`.
+- [x] Reescribir `signup` en `user.mjs`: `bcrypt.hash(password, 10)` en vez de `md5`.
+- [x] Reescribir `login`: traer el row por username y validar con `bcrypt.compare`.
+- [x] Agregar `GET /api/me` con `[verifyToken, getUser]` → `{ username, token: res.newToken }`.
+- [x] Crear `frontend/src/api.js` (helper axios con `__API__`, interceptor de `Authorization` y handler de 401).
+- [x] Crear `frontend/src/components/Login.vue` (form con toggle login/signup, llama `/api/login` o `/api/signup`).
+- [x] Agregar rutas `/login` (pública) y `/dashboard` (protegida, placeholder por ahora).
+- [x] Agregar guard global en el router: `if (!localStorage.token && to.path !== '/login') redirect('/login')`.
+- [x] Layout: componente `AppHeader.vue` con username + botón logout.
+- [x] Token rotation: guardar `res.newToken` en `localStorage.token` tras cada llamada autenticada exitosa.
 
 ## Verificación
 
-- [ ] Crear usuario nuevo → en la BD el password está hasheado con bcrypt (`$2b$...`), no md5.
-- [ ] Login correcto devuelve token; login incorrecto → 401.
-- [ ] `GET /api/me` con token válido → 200 `{ username }`; sin token → 401; token inválido → 403.
-- [ ] En el frontend, entrar a `/dashboard` sin token redirige a `/login`.
-- [ ] Logout limpia `localStorage.token` y redirige a `/login`.
+- [x] Crear usuario nuevo → en la BD el password está hasheado con bcrypt (`$2b$...`), no md5.
+- [x] Login correcto devuelve token; login incorrecto → 401.
+- [x] `GET /api/me` con token válido → 200 `{ username }`; sin token → 401; token inválido → 403.
+- [x] En el frontend, entrar a `/dashboard` sin token redirige a `/login`.
+- [x] Logout limpia `localStorage.token` y redirige a `/login`.
+
+## Cómo reproducir la verificación
+
+- **Backend (modelo + tokens):** `cd backend && node tests/smoke-auth.mjs` (verifica bcrypt en BD, login, dedupe, rotación y firma de tokens).
+- **Backend (HTTP):** levantar `npm start` y ejercitar `/api/signup`, `/api/login` y `/api/me` (casos 200/401/403).
+- **Frontend:** `cd frontend && API=http://localhost:3000 BUILD_OUT_DIR=dist npm run build` compila sin errores. El guard del router redirige a `/login` si no hay `localStorage.token`; `AppHeader` valida el token vía `/api/me` al montarse y ofrece logout.
+
+## Notas de implementación
+
+- `md5` se eliminó de `backend/package.json`; el único algoritmo de password ahora es `bcrypt` (cost factor 10).
+- `api.js` registra un handler `onUnauthorized` (seteado desde `main.js`) para redirigir a `/login` en 401, evitando import circular con el router.
+- Rotación de token: el interceptor de respuesta guarda `response.data.token` en `localStorage` (lo emiten `/api/login` y `/api/me`, y futuros endpoints protegidos que incluyan `token`).
+- `AppHeader` hace logout también ante un fallo de `/api/me` (cubriendo tokens invalidados → 403).
 
 ## Notas / decisiones
 

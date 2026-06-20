@@ -17,6 +17,7 @@ Detalle técnico del scaffolding conservado tras la Épica 0. Referencia para im
 - `GET /api/` — health.
 - `POST /api/signup` — `{ username, password }` → `{ success }` o `{ error }`.
 - `POST /api/login` — `{ username, password }` → `{ success, token }` o 401 `{ error }`.
+- `GET /api/me` (protegida, `[verifyToken, getUser]`) → `{ username, token }` (token rotado).
 
 ### Middlewares exportados (reutilizar en rutas protegidas)
 ```js
@@ -43,8 +44,8 @@ JWT custom (sin librería externa). Token = `<base64url payload>.<HMAC-SHA256>`.
 - **Schema actual (post-Épica 0):** solo `users(id, username UNIQUE, password, created_at)`.
 
 ### Modelo user (`src/models/user.mjs`)
-- `signup(username, password)` — dedupe por username, hashea con `md5` (**→ bcrypt en Épica 2**).
-- `login(username, password)` — valida md5.
+- `signup(username, password)` — dedupe por username, hashea con **bcrypt** (cost factor 10).
+- `login(username, password)` — trae el row por username y valida con `bcrypt.compare`.
 - `getBy(selector, match)`, `update(destination, value, selector, match)`.
 - Todas devuelven Promises con `{ success }` o `{ error }`.
 
@@ -56,14 +57,22 @@ JWT custom (sin librería externa). Token = `<base64url payload>.<HMAC-SHA256>`.
 - `index.html`: carga `src/styles.styl`, Google Fonts (Material Symbols + Open Sans), monta `#app`, ejecuta `src/main.js`.
 - `main.js`: `createApp` con build `vue/dist/vue.esm-bundler` (runtime+compiler). Router con `createWebHistory`. Instala el plugin `storage`.
 
-### Router (actual)
+### Router (`src/router.js`)
 ```
-/ → home.vue
+/         → redirect /dashboard
+/login    → Login.vue        (pública)
+/dashboard → Dashboard.vue    (protegida)
 ```
-Se irán agregando: `/login`, `/dashboard`, `/series/:id`, `/series/new`, etc.
+Guard global `beforeEach`: si no hay `localStorage.token` y no se va a `/login`, redirige a `/login`; si hay token y se va a `/login`, redirige a `/dashboard`.
 
 ### Plugin storage (`src/storage.js`)
 Store `reactive` simple con `set/get/remove` sobre `store.state`. Sin persistencia en localStorage por ahora (se limpió la lógica de MangaDex). Si se necesita caché local, agregar bajo este plugin.
+
+### HTTP helper (`src/api.js`)
+Instancia axios con `baseURL = __API__`. Interceptores:
+- **Request:** adjunta `Authorization: Bearer <localStorage.token>` si existe.
+- **Response ok:** si el body trae `token`, lo guarda en `localStorage.token` (rotación).
+- **Response error 401:** limpia `localStorage.token` y dispara `onUnauthorized` (registrado desde `main.js`) que redirige a `/login`.
 
 ### Vite (`vite.config.js`)
 - Plugins: `@vitejs/plugin-vue` + `dotPathFixPlugin` (SPA fallback: cualquier path no `/@`, no `/api/` y que no exista en `public/` se reescribe a `/`).

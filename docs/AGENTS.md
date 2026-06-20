@@ -23,7 +23,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 
 | # | Decisión | Valor |
 |---|----------|-------|
-| 1 | Hashing de password | **Migrar a `bcrypt`** (actualmente `md5`, se cambia en Épica 2) |
+| 1 | Hashing de password | **`bcrypt`** (cost factor 10; migración de `md5` completada en Épica 2) |
 | 2 | Usuarios | **Multiusuario real** (filtrar siempre por `user_id`, índices estrictos) |
 | 3 | Portada | **Solo URL externa** (no subir archivos, no usar `multer`, no carpeta de imágenes) |
 | 4 | Detección de nº de capítulo | **Conteo de items RSS nuevos desde el último visto**. Si no funciona, se itera |
@@ -85,22 +85,28 @@ cd frontend && npm install && API=http://localhost:3000 npm run dev
 ```
 backend/
   ecosystem.config.js          # PM2: app "mangacafe", cron_restart diario (ajustar a 6h en Épica 8)
-  package.json                 # deps: express, sqlite3, pug, md5 (→bcrypt E2), xml2js, axios
+  package.json                 # deps: express, sqlite3, pug, bcrypt, xml2js, axios
   src/
     index.mjs                  # Express app + rutas + middlewares verifyToken/getUser (exportados)
     auth.mjs                   # JWT custom (HMAC-SHA256, expira 1 año)
     models/
       db.mjs                   # conexión SQLite + createTable() + schema de users
-      user.mjs                 # signup/login/getBy/update (md5 hoy, bcrypt mañana)
+      user.mjs                 # signup/login/getBy/update (bcrypt, cost 10)
 frontend/
   index.html                   # entry HTML, carga styles.styl + fonts, monta #app
   vite.config.js               # plugin vue + dotPathFixPlugin + define __API__
   src/
-    main.js                    # createApp + router (ruta "/" → home.vue) + plugin storage
+    main.js                    # createApp(App) + router + plugin storage + registro de onUnauthorized
+    router.js                  # rutas (/login, /dashboard) + guard global de auth
+    api.js                     # helper axios (__API__, Authorization, rotación de token, handler 401)
+    App.vue                    # root: AppHeader (si autenticado) + router-view
     storage.js                 # plugin $storage (reactive store simple, sin lógica de MangaDex)
     styles.styl                # variables CSS globales
     components/
-      home.vue                 # placeholder (reemplazar en Épica 5)
+      home.vue                 # placeholder (sin uso; Épica 5 lo reemplaza)
+      Login.vue                # form con toggle login/signup (Épica 2)
+      Dashboard.vue            # placeholder protegido (Épica 5)
+      AppHeader.vue            # header con username + logout (Épica 2)
 docs/
   AGENTS.md                    # ESTE ARCHIVO
   PROJECT.md                   # visión, decisiones, épicas (índice)

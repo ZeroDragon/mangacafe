@@ -1,5 +1,7 @@
-import md5 from 'md5'
+import bcrypt from 'bcrypt'
 import db from './db.mjs'
+
+const SALT_ROUNDS = 10
 
 const signup = async (username, password) => {
   const { error, data: userByUsername } = await getBy('username', username)
@@ -9,7 +11,7 @@ const signup = async (username, password) => {
   }
   if (userByUsername) return { error: 'Username already exists!' }
 
-  const hashedPassword = md5(password)
+  const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS)
   return new Promise(resolve => {
     db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], (err) => {
       if (err) {
@@ -22,17 +24,15 @@ const signup = async (username, password) => {
 }
 
 const login = async (username, password) => {
-  const hashedPassword = md5(password)
-  return new Promise(resolve => {
-    db.get('SELECT * FROM users WHERE username = ? AND password = ?', [username, hashedPassword], (err, row) => {
-      if (err) {
-        console.error(err)
-        return resolve({ error: 'Error while log in, try again later.' })
-      }
-      if (row) return resolve({ success: true })
-      resolve({ error: 'Invalid username or password' })
-    })
-  })
+  const { error, data: row } = await getBy('username', username)
+  if (error) {
+    console.error(error)
+    return { error: 'Error while log in, try again later.' }
+  }
+  if (!row) return { error: 'Invalid username or password' }
+  const match = await bcrypt.compare(password, row.password)
+  if (!match) return { error: 'Invalid username or password' }
+  return { success: true }
 }
 
 const getBy = (selector, match) => {
