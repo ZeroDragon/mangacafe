@@ -26,8 +26,7 @@ export default (({ mode }) => {
   return defineConfig({
     plugins: [vue(), dotPathFixPlugin()],
     define: {
-      '__API__': `"${env.API}"`,
-      '__BOT_NAME__': `"${env.TELEGRAM_BOT}"`
+      '__API__': `"${env.API}"`
     },
     build: {
       outDir: env.BUILD_OUT_DIR,
