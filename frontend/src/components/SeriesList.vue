@@ -1,0 +1,119 @@
+<template lang="pug">
+.series-list
+  header.bar
+    h1 Tus series
+    button.add(@click="$router.push('/series/new')")
+      span.material-symbols-outlined add
+      span Nueva
+  p.error(v-if="error") {{ error }}
+  .loading(v-if="loading") Cargando…
+  .empty(v-else-if="!series.length")
+    span.material-symbols-outlined library_books
+    p Aún no tenés series, agregá una.
+    button.add(@click="$router.push('/series/new')")
+      span.material-symbols-outlined add
+      span Crear serie
+  .grid(v-else)
+    SeriesCard(
+      v-for="s in series"
+      :key="s.id"
+      :series="s"
+      @edit="onEdit"
+      @delete="onDelete")
+</template>
+
+<script>
+import api from '../api.js'
+import SeriesCard from './SeriesCard.vue'
+
+export default {
+  name: 'SeriesList',
+  components: { SeriesCard },
+  data () {
+    return {
+      series: [],
+      loading: false,
+      error: ''
+    }
+  },
+  mounted () {
+    this.fetch()
+  },
+  methods: {
+    async fetch () {
+      this.loading = true
+      this.error = ''
+      try {
+        const res = await api.get('/api/series')
+        this.series = res.data.data || []
+      } catch (e) {
+        this.error = 'No se pudieron cargar tus series'
+      } finally {
+        this.loading = false
+      }
+    },
+    onEdit (series) {
+      this.$router.push(`/series/${series.id}/edit`)
+    },
+    async onDelete (series) {
+      if (!confirm(`¿Eliminar "${series.name}"? Se borrarán también sus items.`)) return
+      try {
+        await api.delete(`/api/series/${series.id}`)
+        this.series = this.series.filter(s => s.id !== series.id)
+      } catch (e) {
+        this.error = (e.response && e.response.data && e.response.data.error) || 'No se pudo eliminar'
+      }
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+.series-list
+  margin-top 16px
+.bar
+  display flex
+  align-items center
+  justify-content space-between
+  gap 12px
+  margin-bottom 16px
+  h1
+    font-weight 300
+    margin 0
+.add
+  display inline-flex
+  align-items center
+  gap 4px
+  background var(--primary)
+  border none
+  color #fff
+  padding 8px 12px
+  border-radius 6px
+  cursor pointer
+  font-size 14px
+  &:hover
+    opacity 0.9
+  .material-symbols-outlined
+    font-size 18px
+.grid
+  display grid
+  grid-template-columns repeat(auto-fill, minmax(320px, 1fr))
+  gap 12px
+.loading, .empty
+  text-align center
+  opacity 0.7
+  padding 40px 0
+.empty
+  display flex
+  flex-direction column
+  align-items center
+  gap 12px
+  .material-symbols-outlined
+    font-size 48px
+    opacity 0.4
+  p
+    margin 0
+.error
+  color var(--danger)
+  text-align center
+</style>

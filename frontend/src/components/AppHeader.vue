@@ -1,6 +1,9 @@
 <template lang="pug">
 header.app-header
-  .brand Manga Café
+  router-link.brand(:to="{ path: '/dashboard' }") Manga Café
+  nav.links
+    router-link(:to="{ path: '/dashboard' }") Dashboard
+    router-link(:to="{ path: '/series' }") Series
   .spacer
   .user(v-if="username")
     span.material-symbols-outlined.icon person
@@ -48,6 +51,20 @@ export default {
   .brand
     font-weight 600
     letter-spacing 0.5px
+  .links
+    display flex
+    gap 14px
+    margin-left 8px
+    a
+      font-size 14px
+      opacity 0.75
+      padding 4px 0
+      border-bottom 2px solid transparent
+      &.router-link-active
+        opacity 1
+        border-bottom-color #fff
+      &:hover
+        opacity 1
   .spacer
     flex 1
   .user

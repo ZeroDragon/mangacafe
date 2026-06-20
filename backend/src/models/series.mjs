@@ -25,7 +25,16 @@ const create = (userId, { type, name, url, cover_url, current_chapter, rss_url }
 const listByUser = (userId) => {
   return new Promise(resolve => {
     db.all(
-      `SELECT * FROM series WHERE user_id = ? ORDER BY updated_at DESC`,
+      `SELECT s.*, COALESCE(si.pending, 0) AS pending
+       FROM series s
+       LEFT JOIN (
+         SELECT series_id, COUNT(*) AS pending
+         FROM series_items
+         WHERE seen = 0
+         GROUP BY series_id
+       ) si ON si.series_id = s.id
+       WHERE s.user_id = ?
+       ORDER BY s.updated_at DESC`,
       [userId],
       (err, rows) => {
         if (err) {

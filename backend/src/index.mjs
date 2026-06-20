@@ -1,6 +1,8 @@
 import express from 'express'
+import { fileURLToPath } from 'url'
 import '../../dotenv.mjs'
 import user from './models/user.mjs'
+import series from './models/series.mjs'
 import Auth from './auth.mjs'
 
 const app = express()
@@ -50,6 +52,43 @@ export const getUser = (req, res, next) => {
   next()
 }
 
+// Resuelve user_id desde res.username (el token solo lleva username).
+// Cuelga res.userId para que los handlers filtren siempre por user_id.
+export const resolveUserId = async (req, res, next) => {
+  const { error, data } = await user.getBy('username', res.username)
+  if (error) return res.status(500).json({ error: 'Error resolving user' })
+  if (!data) return res.status(401).json({ error: 'User not found' })
+  res.userId = data.id
+  next()
+}
+
+const VALID_TYPES = ['manga', 'anime']
+const URL_FIELDS = ['url', 'cover_url', 'rss_url']
+const isHttpUrl = (v) => typeof v === 'string' && /^https?:\/\/.+/.test(v)
+
+// Devuelve array de mensajes de error. `partial=true` permite omitir campos (PUT).
+const validateSeries = (body, partial = false) => {
+  const errors = []
+  const has = (k) => Object.prototype.hasOwnProperty.call(body, k)
+
+  if (!partial || has('type')) {
+    if (!VALID_TYPES.includes(body.type)) errors.push('type debe ser "manga" o "anime"')
+  }
+  if (!partial || has('name')) {
+    if (typeof body.name !== 'string' || !body.name.trim()) errors.push('name es obligatorio')
+  }
+  for (const f of URL_FIELDS) {
+    if (has(f) && body[f] !== '' && body[f] != null) {
+      if (!isHttpUrl(body[f])) errors.push(`${f} debe ser una URL http(s)`)
+    }
+  }
+  if (has('current_chapter')) {
+    const n = Number(body.current_chapter)
+    if (!Number.isFinite(n) || n < 0) errors.push('current_chapter debe ser >= 0')
+  }
+  return errors
+}
+
 app.get('/api/', (_req, res) => {
   res.json({ message: 'Manga Café API' })
 })
@@ -58,6 +97,58 @@ app.get('/api/me', [verifyToken, getUser], (_req, res) => {
   res.json({ username: res.username, token: res.newToken })
 })
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
+// --- CRUD de series (Épica 3) ---
+// Todas filtran por res.userId (aislamiento multiusuario).
+
+app.get('/api/series', [verifyToken, getUser, resolveUserId], async (_req, res) => {
+  const { error, data } = await series.listByUser(res.userId)
+  if (error) return res.status(500).json({ error: 'Error fetching series' })
+  res.json({ data, token: res.newToken })
 })
+
+app.post('/api/series', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const errors = validateSeries(req.body)
+  if (errors.length) return res.status(400).json({ error: errors.join('; ') })
+  const payload = {
+    type: req.body.type,
+    name: req.body.name.trim(),
+    url: req.body.url || null,
+    cover_url: req.body.cover_url || null,
+    current_chapter: req.body.current_chapter || 0,
+    rss_url: req.body.rss_url || null
+  }
+  const { error, id } = await series.create(res.userId, payload)
+  if (error) return res.status(500).json({ error })
+  res.json({ success: true, id, token: res.newToken })
+})
+
+app.get('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { error, data } = await series.getById(req.params.id, res.userId)
+  if (error) return res.status(500).json({ error })
+  if (!data) return res.status(404).json({ error: 'Series not found' })
+  res.json({ data, token: res.newToken })
+})
+
+app.put('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const errors = validateSeries(req.body, true)
+  if (errors.length) return res.status(400).json({ error: errors.join('; ') })
+  const { error } = await series.update(req.params.id, res.userId, req.body)
+  if (error) return res.status(404).json({ error: 'Series not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
+app.delete('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { error } = await series.remove(req.params.id, res.userId)
+  if (error) return res.status(404).json({ error: 'Series not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
+export { app }
+
+// Solo escucha cuando se ejecuta directamente (no al importarse en tests)
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+if (isMain) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`)
+  })
+}
