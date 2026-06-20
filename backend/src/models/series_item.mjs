@@ -74,6 +74,41 @@ const pendingByUser = (userId) => {
   })
 }
 
+// Agregación completa para el dashboard: une series + conteo de pendientes
+// + último item pendiente (título y fecha). Ordenado por pendientes DESC.
+const dashboardByUser = (userId) => {
+  return new Promise(resolve => {
+    db.all(
+      `SELECT s.*, COALESCE(p.pending, 0) AS pending,
+              li.title AS last_item_title, li.pub_date AS last_item_date, li.id AS last_item_id, li.link AS last_item_link
+       FROM series s
+       LEFT JOIN (
+         SELECT series_id, COUNT(*) AS pending
+         FROM series_items
+         WHERE seen = 0
+         GROUP BY series_id
+       ) p ON p.series_id = s.id
+       LEFT JOIN (
+         SELECT series_id, MAX(id) AS max_id
+         FROM series_items
+         WHERE seen = 0
+         GROUP BY series_id
+       ) lm ON lm.series_id = s.id
+       LEFT JOIN series_items li ON li.id = lm.max_id
+       WHERE s.user_id = ?
+       ORDER BY pending DESC, s.updated_at DESC`,
+      [userId],
+      (err, rows) => {
+        if (err) {
+          console.error(err)
+          return resolve({ error: err })
+        }
+        resolve({ data: rows })
+      }
+    )
+  })
+}
+
 const markSeen = (itemId) => {
   return new Promise(resolve => {
     db.run(
@@ -132,11 +167,30 @@ const listBySeries = (seriesId, { onlyPending = false } = {}) => {
   })
 }
 
+// Marca como vistos todos los items pendientes de una serie.
+const markAllSeen = (seriesId) => {
+  return new Promise(resolve => {
+    db.run(
+      `UPDATE series_items SET seen = 1 WHERE series_id = ? AND seen = 0`,
+      [seriesId],
+      function (err) {
+        if (err) {
+          console.error(err)
+          return resolve({ error: err })
+        }
+        resolve({ success: true, updated: this.changes })
+      }
+    )
+  })
+}
+
 export default {
   insertMany,
   pendingCount,
   pendingByUser,
+  dashboardByUser,
   markSeen,
   markSeenUpTo,
+  markAllSeen,
   listBySeries
 }

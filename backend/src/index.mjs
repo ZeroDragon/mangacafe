@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import '../../dotenv.mjs'
 import user from './models/user.mjs'
 import series from './models/series.mjs'
+import seriesItem from './models/series_item.mjs'
 import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
 
@@ -158,6 +159,46 @@ app.post('/api/series/:id/refresh', [verifyToken, getUser, resolveUserId], async
   const result = await refresher.refreshSeries(data)
   if (result.error) return res.json({ success: false, error: result.error, token: res.newToken })
   res.json({ success: true, ...result, token: res.newToken })
+})
+
+// --- Dashboard (Épica 5) ---
+// Lee el estado actual (no bloquea con refresh RSS). El scheduler actualiza en background.
+app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, res) => {
+  const { error, data } = await seriesItem.dashboardByUser(res.userId)
+  if (error) return res.status(500).json({ error: 'Error fetching dashboard' })
+  const items = (data || []).map(s => ({
+    id: s.id,
+    type: s.type,
+    name: s.name,
+    url: s.url,
+    cover_url: s.cover_url,
+    current_chapter: s.current_chapter,
+    rss_url: s.rss_url,
+    last_error: s.last_error,
+    last_checked_at: s.last_checked_at,
+    pending: s.pending,
+    hasUpdates: s.pending > 0,
+    last_item_title: s.last_item_title,
+    last_item_date: s.last_item_date,
+    last_item_link: s.last_item_link
+  }))
+  const totalPending = items.reduce((acc, s) => acc + s.pending, 0)
+  const withUpdates = items.filter(s => s.hasUpdates).length
+  res.json({
+    data: items,
+    summary: { totalPending, withUpdates, total: items.length },
+    token: res.newToken
+  })
+})
+
+// Marca todos los items pendientes de una serie como vistos.
+// Opcionalmente avanza current_chapter al last_known_total (decisión: avanza).
+app.post('/api/series/:id/seen-all', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { data } = await series.getById(req.params.id, res.userId)
+  if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
+  const result = await seriesItem.markAllSeen(req.params.id)
+  if (result.error) return res.status(500).json({ error: result.error })
+  res.json({ success: true, updated: result.updated, token: res.newToken })
 })
 
 export { app }
