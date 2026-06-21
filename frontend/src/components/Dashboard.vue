@@ -34,61 +34,59 @@
     span.material-symbols-outlined library_books
     p You don't have any series yet, add one.
     router-link.cta(:to="{ path: '/series/new' }") Create series
-  .empty(v-else-if="!summary.totalPending && filter === 'all' && !search")
-    span.material-symbols-outlined check_circle
-    p You're all caught up! No pending chapters.
-    router-link.cta(:to="{ path: '/series' }") View my series
-  .empty.filtered(v-else-if="!filtered.length")
-    span.material-symbols-outlined search_off
-    p No series match the filter.
-    button.reset(@click="resetFilters") Clear filters
-  .grid(v-else)
-    article.card(
-      v-for="s in filtered"
-      :key="s.id"
-      :class="{ error: s.last_error }")
-      .cover
-        img(
-          v-if="s.cover_url"
-          :src="s.cover_url"
-          :alt="s.name"
-          referrerpolicy="no-referrer"
-          @error="onCoverError")
-        .cover-placeholder(v-else)
-          span.material-symbols-outlined photo
-      .body
-        .top
-          span.type-badge(:class="s.type") {{ s.type === 'anime' ? 'Anime' : 'Manga' }}
-          span.badge.pending(v-if="s.pending > 0") {{ s.pending }}
-          span.badge.error(v-else-if="s.last_error" title="Feed error")
-            span.material-symbols-outlined error
-        h3.name
-          router-link(:to="{ path: `/series/${s.id}` }") {{ s.name }}
-        .chapter(v-if="s.pending > 0") Latest: {{ s.last_item_title || '—' }}
-        .chapter(v-else) Current ch.: {{ s.current_chapter }}
-        .error-msg(v-if="s.last_error" :title="s.last_error") Feed: {{ s.last_error }}
-        .actions
-          router-link.btn.icon-only(:to="{ path: `/series/${s.id}` }" title="Open")
-            span.material-symbols-outlined open_in_new
-          button.btn.icon-only(@click="markSeen(s)" :disabled="s.pending === 0" title="Mark all as seen")
-            span.material-symbols-outlined done_all
+
+  template(v-else)
+    // Main grid: filterable view (Pending by default)
+    .grid(v-if="filtered.length")
+      DashCard(
+        v-for="s in filtered"
+        :key="s.id"
+        :series="s"
+        @mark-seen="markSeen")
+    .empty.filtered(v-else-if="filter === 'pending' && !search")
+      span.material-symbols-outlined check_circle
+      p You're all caught up! No pending chapters.
+      router-link.cta(:to="{ path: '/series' }") View my series
+    .empty.filtered(v-else)
+      span.material-symbols-outlined search_off
+      p No series match the filter.
+      button.reset(@click="resetFilters") Clear filters
+
+    // All series: every item regardless of pending/type
+    section.list-section(v-if="allItems.length")
+      h2.section-title All series ({{ allItems.length }})
+      .grid
+        DashCard(
+          v-for="s in allItems"
+          :key="s.id"
+          :series="s"
+          @mark-seen="markSeen")
+
+    // Errors: series with feed errors
+    section.list-section(v-if="errorItems.length")
+      h2.section-title.section-title-error Errors ({{ errorItems.length }})
+      .grid
+        DashCard(
+          v-for="s in errorItems"
+          :key="s.id"
+          :series="s"
+          @mark-seen="markSeen")
 </template>
 
 <script>
 import api from '../api.js'
 import Loader from './Loader.vue'
+import DashCard from './DashCard.vue'
 
 const FILTERS = [
-  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
   { key: 'manga', label: 'Manga' },
-  { key: 'anime', label: 'Anime' },
-  { key: 'pending', label: 'With pending' },
-  { key: 'error', label: 'With errors' }
+  { key: 'anime', label: 'Anime' }
 ]
 
 export default {
   name: 'Dashboard',
-  components: { Loader },
+  components: { Loader, DashCard },
   data () {
     return {
       items: [],
@@ -97,21 +95,29 @@ export default {
       refreshing: false,
       error: '',
       search: '',
-      filter: 'all',
+      filter: 'pending',
       FILTERS
     }
   },
   computed: {
-    filtered () {
+    matches () {
       const q = this.search.trim().toLowerCase()
+      return (s) => !q || s.name.toLowerCase().includes(q)
+    },
+    filtered () {
       return this.items.filter(s => {
-        if (q && !s.name.toLowerCase().includes(q)) return false
+        if (!this.matches(s)) return false
         if (this.filter === 'manga' && s.type !== 'manga') return false
         if (this.filter === 'anime' && s.type !== 'anime') return false
         if (this.filter === 'pending' && s.pending === 0) return false
-        if (this.filter === 'error' && !s.last_error) return false
         return true
       })
+    },
+    allItems () {
+      return this.items.filter(this.matches)
+    },
+    errorItems () {
+      return this.items.filter(s => s.last_error && this.matches(s))
     }
   },
   mounted () {
@@ -155,10 +161,7 @@ export default {
     },
     resetFilters () {
       this.search = ''
-      this.filter = 'all'
-    },
-    onCoverError (e) {
-      e.target.style.display = 'none'
+      this.filter = 'pending'
     }
   }
 }
@@ -248,111 +251,18 @@ export default {
   display grid
   grid-template-columns repeat(auto-fill, minmax(320px, 1fr))
   gap 12px
-.card
-  display flex
-  gap 12px
-  background rgba(255,255,255,0.04)
-  border 1px solid rgba(255,255,255,0.08)
-  border-radius 10px
-  padding 12px
-  min-height 140px
-  &.error
-    border-color rgba(255,99,71,0.4)
-.cover
-  width 80px
-  height 116px
-  flex-shrink 0
-  border-radius 6px
-  overflow hidden
-  background rgba(0,0,0,0.3)
-  display flex
-  align-items center
-  justify-content center
-  img
-    width 100%
-    height 100%
-    object-fit cover
-.cover-placeholder
-  opacity 0.3
-  .material-symbols-outlined
-    font-size 32px
-.body
-  flex 1
-  display flex
-  flex-direction column
-  gap 4px
-  min-width 0
-.top
-  display flex
-  align-items center
-  gap 6px
-.type-badge
-  font-size 11px
-  text-transform uppercase
-  letter-spacing 0.5px
-  padding 2px 8px
-  border-radius 999px
-  background rgba(255,255,255,0.08)
-  &.anime
-    color #ff9
-    background rgba(255,255,136,0.1)
-  &.manga
-    color #9cf
-    background rgba(153,204,255,0.1)
-.badge
-  margin-left auto
-  font-size 12px
-  padding 2px 8px
-  border-radius 999px
-  display inline-flex
-  align-items center
-  &.pending
-    background var(--danger)
-    color #fff
-    font-weight 500
-  &.error
-    background rgba(255,99,71,0.15)
-    color var(--danger)
-    .material-symbols-outlined
-      font-size 16px
-.name
-  margin 4px 0 0
-  font-size 16px
-  font-weight 500
-  overflow hidden
-  text-overflow ellipsis
-  a
-    color inherit
-    &:hover
-      text-decoration underline
-.chapter, .error-msg
+.list-section
+  margin-top 32px
+.section-title
+  font-weight 400
   font-size 13px
   opacity 0.75
-.error-msg
-  color var(--danger)
-  opacity 0.9
-  overflow hidden
-  text-overflow ellipsis
-  white-space nowrap
-.actions
-  margin-top auto
-  display flex
-  gap 6px
-.btn
-  background transparent
-  border 1px solid rgba(255,255,255,0.12)
-  color var(--foreground)
-  padding 6px
-  border-radius 6px
-  cursor pointer
-  display inline-flex
-  &:hover:not(:disabled)
-    background rgba(255,255,255,0.08)
-  &:disabled
-    opacity 0.4
-    cursor not-allowed
-.icon-only .material-symbols-outlined
-  font-size 18px
+  margin 0 0 12px
+  text-transform uppercase
+  letter-spacing 0.5px
+  &.section-title-error
+    color var(--danger)
+    opacity 0.9
 .loading, .empty
   text-align center
   opacity 0.7
