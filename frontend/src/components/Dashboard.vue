@@ -52,16 +52,6 @@
       p No series match the filter.
       button.reset(@click="resetFilters") Clear filters
 
-    // All series: every item regardless of pending/type
-    section.list-section(v-if="allItems.length")
-      h2.section-title All series ({{ allItems.length }})
-      .grid
-        DashCard(
-          v-for="s in allItems"
-          :key="s.id"
-          :series="s"
-          @mark-seen="markSeen")
-
     // Errors: series with feed errors
     section.list-section(v-if="errorItems.length")
       h2.section-title.section-title-error Errors ({{ errorItems.length }})
@@ -112,9 +102,6 @@ export default {
         if (this.filter === 'pending' && s.pending === 0) return false
         return true
       })
-    },
-    allItems () {
-      return this.items.filter(this.matches)
     },
     errorItems () {
       return this.items.filter(s => s.last_error && this.matches(s))
