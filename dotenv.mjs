@@ -7,5 +7,7 @@ readFileSync('../.env', 'utf8')
   .filter(line => line.length > 0)
   .map(line => line.split(' '))
   .forEach(([variable, ...value]) => {
-    process.env[variable] = value.join(' ')
+    if (process.env[variable] === undefined) {
+      process.env[variable] = value.join(' ')
+    }
   })
