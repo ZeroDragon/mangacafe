@@ -1,0 +1,22 @@
+[tools]
+node = "24.6.0"
+
+# El backend carga el .env con su propio loader custom (formato "KEY value",
+# un solo espacio) en dotenv.mjs, NO el formato KEY=value estándar que mise espera.
+# Por eso no usamos _.file aquí: el backend lo carga solo.
+
+[tasks.dev]
+run = ".mise/tasks/dev"
+
+[tasks.build]
+run = "cd frontend && API=http://localhost:3000 BUILD_OUT_DIR=dist npm run build"
+
+[tasks.test]
+run = [
+  "cd backend && node tests/smoke-auth.mjs",
+  "cd backend && node tests/smoke-data-model.mjs",
+  "cd backend && node tests/smoke-series-crud.mjs",
+  "cd backend && node tests/smoke-imdb-engine.mjs",
+  "cd backend && node tests/smoke-dashboard.mjs",
+  "cd backend && node tests/smoke-series-detail.mjs"
+]

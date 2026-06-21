@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Levanta backend y frontend en paralelo para dev local.
+# Al hacer Ctrl+C mata limpiamente ambos procesos.
+
+cd "$(dirname "$0")/../.."  # root del repo
+
+# Asegura que exista el .env mínimo para dev
+if [ ! -f .env ]; then
+  echo "dev: creando .env por defecto (podes editarlo)"
+  cat > .env <<'EOF'
+PORT 3000
+DB_PATH ./test.sqlite
+API http://localhost:3000
+SECRET dev-secret-cambiar
+EOF
+fi
+
+# Instala deps si hace falta
+[ -d backend/node_modules ] || (cd backend && npm install)
+[ -d frontend/node_modules ] || (cd frontend && npm install)
+
+# Limpieza al salir (Ctrl+C / kill)
+pids=()
+cleanup() {
+  echo
+  echo "dev: deteniendo backend y frontend…"
+  for pid in "${pids[@]}"; do
+    kill "$pid" 2>/dev/null || true
+  done
+  wait 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+echo "dev: backend en http://localhost:3000  •  frontend en http://localhost:5173"
+echo "dev: DB en backend/local.sqlite (ambiente separado de test.sqlite)"
+echo "dev: Ctrl+C para detener"
+echo
+
+(cd backend && DB_PATH=./local.sqlite npm start) &
+pids+=("$!")
+
+(cd frontend && API=http://localhost:3000 npm run dev) &
+pids+=("$!")
+
+wait
