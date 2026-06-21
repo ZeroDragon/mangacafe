@@ -71,8 +71,11 @@
         th Status
         th
     tbody
-      tr(v-for="it in filtered" :key="it.name")
-        td.name {{ it.name }}
+      tr(v-for="it in filtered" :key="it.name" :class="{ added: isAdded(it) }")
+        td.name
+          span.name-text {{ it.name }}
+          span.added-mark(v-if="isAdded(it)" title="Already in your series")
+            span.material-symbols-outlined check_circle
         td.ep
           span.ep-label {{ it.label }}
           span.ep-title(v-if="it.title && it.status !== 'unstarted'")  · {{ it.title }}
@@ -80,12 +83,29 @@
           span.badge(:class="it.status") {{ STATUS_TEXT[it.status] }}
         td.actions
           button.add-series(
+            v-if="!isAdded(it)"
             type="button"
             @click="addToSeries(it)"
             :disabled="resolving === it.name"
             title="Add to series")
             span.material-symbols-outlined {{ resolving === it.name ? 'progress_activity' : 'add_circle' }}
             span.label {{ resolving === it.name ? '…' : 'Add' }}
+          button.mark-added(
+            v-if="!isAdded(it)"
+            type="button"
+            @click="markAdded(it)"
+            title="Mark as added (use when seasons don't match)")
+            span.material-symbols-outlined check
+          button.added-pill(
+            v-else-if="isManualAdded(it)"
+            type="button"
+            @click="unmarkAdded(it)"
+            title="Manually marked — click to unmark")
+            span.material-symbols-outlined check_circle
+            span Added
+          span.added-pill.auto(v-else)
+            span.material-symbols-outlined check_circle
+            span Added
 
   .empty.filtered(v-else-if="items.length")
     span.material-symbols-outlined filter_alt_off
@@ -141,6 +161,34 @@ const clearCache = () => {
   try { localStorage.removeItem(CACHE_KEY) } catch {}
 }
 
+// Marcas manuales de "added": items que el usuario marcó aunque no hagan match
+// con sus series (típico: Crunchyroll parte una temporada en dos y la key no
+// coincide). Persisten en localStorage para no perderlas entre visitas.
+const MANUAL_KEY = 'cr_added_manual'
+const readManual = () => {
+  try {
+    const raw = localStorage.getItem(MANUAL_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+const writeManual = (keys) => {
+  try { localStorage.setItem(MANUAL_KEY, JSON.stringify([...keys])) } catch {}
+}
+
+// Construye la key de matching contra las series del usuario. Debe ser idéntica
+// a la que produce addToSeries cuando arma el nombre (`{name} S{season}`),
+// solo que normalizada a minúsculas para comparar case-insensitive. Si la
+// temporada no viene, cae al nombre solo (igual que en el alta).
+const matchKey = (name, season) => {
+  const base = String(name || '').trim().toLowerCase()
+  if (season == null || season === '') return base
+  return `${base} s${season}`
+}
+
 // Formatea syncedAt (epoch ms) como "hace Xm/h/d" o fecha corta si es viejo.
 const formatAgo = (ts) => {
   if (!ts) return ''
@@ -171,6 +219,10 @@ export default {
       error: '',
       filter: 'all',
       resolving: null,
+      // Set de keys normalizadas de las series del usuario (name + season).
+      seriesKeys: new Set(),
+      // Keys marcadas manualmente como "added" (sin match real en DB).
+      manualAdded: new Set(readManual()),
       FILTERS,
       STATUS_TEXT
     }
@@ -189,7 +241,44 @@ export default {
       return formatAgo(this.syncedAt)
     }
   },
+  mounted () {
+    this.loadSeriesKeys()
+  },
   methods: {
+    // Carga las series del usuario y arma un Set de keys para detectar cuáles
+    // items de Crunchyroll ya están agregados. El nombre de la serie en la DB
+    // ya viene con el sufijo de temporada (ej. "Foo S4"), así que la key es
+    // simplemente el nombre en minúsculas. No es blocking: si falla, los
+    // items simplemente no se marcan.
+    async loadSeriesKeys () {
+      try {
+        const res = await api.get('/api/series')
+        const list = res.data.data || []
+        this.seriesKeys = new Set(
+          list.map(s => String(s.name || '').trim().toLowerCase())
+        )
+      } catch {
+        // sin seriesKeys → nada se marca como agregado
+      }
+    },
+    isAdded (it) {
+      const k = matchKey(it.name, it.season)
+      return this.seriesKeys.has(k) || this.manualAdded.has(k)
+    },
+    isManualAdded (it) {
+      return this.manualAdded.has(matchKey(it.name, it.season))
+    },
+    // Marca un item como agregado aunque no haya match en DB. Pensado para
+    // animes que Crunchyroll parte en una sola temporada pero el usuario tiene
+    // como dos (o viceversa), donde la key normalizada no coincide.
+    markAdded (it) {
+      this.manualAdded.add(matchKey(it.name, it.season))
+      writeManual(this.manualAdded)
+    },
+    unmarkAdded (it) {
+      this.manualAdded.delete(matchKey(it.name, it.season))
+      writeManual(this.manualAdded)
+    },
     async sync () {
       this.loading = true
       this.error = ''
@@ -379,12 +468,22 @@ export default {
   tbody tr
     &:hover
       background rgba(255,255,255,0.03)
+    &.added
+      opacity 0.6
   td
     padding 10px
     border-bottom 1px solid rgba(255,255,255,0.05)
     vertical-align middle
   .name
     font-weight 400
+    .name-text
+      margin-right 6px
+    .added-mark
+      vertical-align middle
+      color rgba(80,200,120,0.9)
+      .material-symbols-outlined
+        font-size 16px
+        vertical-align middle
   .ep
     .ep-label
       font-variant-numeric tabular-nums
@@ -415,6 +514,7 @@ export default {
       border-color rgba(255,255,255,0.1)
   .actions
     text-align right
+    white-space nowrap
     .add-series
       display inline-flex
       align-items center
@@ -434,6 +534,41 @@ export default {
       &:disabled
         opacity 0.5
         cursor not-allowed
+    .mark-added
+      display inline-flex
+      align-items center
+      justify-content center
+      background transparent
+      border 1px solid rgba(255,255,255,0.12)
+      color var(--foreground)
+      padding 5px 7px
+      border-radius 6px
+      cursor pointer
+      .material-symbols-outlined
+        font-size 16px
+      &:hover
+        background rgba(80,200,120,0.12)
+        border-color rgba(80,200,120,0.5)
+        color #88dca0
+    .added-pill
+      display inline-flex
+      align-items center
+      gap 4px
+      background rgba(80,200,120,0.12)
+      border 1px solid rgba(80,200,120,0.3)
+      color #88dca0
+      padding 5px 10px
+      border-radius 6px
+      font-size 12px
+      .material-symbols-outlined
+        font-size 15px
+      // La manual es un button: se puede desmarcar al click
+      &:not(.auto)
+        cursor pointer
+        &:hover
+          filter brightness(1.15)
+          border-color rgba(255,100,100,0.5)
+          color #ff9999
 .empty
   text-align center
   opacity 0.7
