@@ -6,15 +6,15 @@ Tracker de lectura de mangas y episodios de anime. Permite saber, al abrir la ap
 
 ## Objetivo de producto
 
-Mantener un registro personal de series (manga o anime) que el usuario está siguiendo, con su URL, portada, capítulo actual y —opcionalmente— un feed RSS para detectar actualizaciones automáticamente.
+Mantener un registro personal de series (manga o anime) que el usuario está siguiendo, con su URL, portada, capítulo actual y —opcionalmente— una URL de IMDB para detectar episodios nuevos automáticamente.
 
 El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes en X series"**.
 
 ## Flujo principal
 
 1. Login (multiusuario).
-2. Alta/edición de series (tipo, nombre, URL, portada, capítulo actual, RSS opcional).
-3. Dashboard con refresco automático de RSS y conteo de pendientes.
+2. Alta/edición de series (tipo, nombre, URL, portada, capítulo actual, URL de IMDB opcional).
+3. Dashboard con refresco automático desde IMDB y conteo de pendientes.
 4. Detalle de serie para ver feed y marcar como visto.
 
 ---
@@ -24,10 +24,10 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 1. **Password:** migrar `md5` → `bcrypt` (Épica 2).
 2. **Multiusuario** real: aislamiento estricto por `user_id`.
 3. **Portada:** URL externa únicamente. Nada de subidas.
-4. **Conteo de pendientes:** items RSS nuevos no vistos. Iterar si no alcanza.
-5. **Refresco RSS:** cada 6h en prod; on-demand en dev.
+4. **Conteo de pendientes:** episodios de IMDB nuevos (ya emitidos) no vistos. Iterar si no alcanza.
+5. **Refresco IMDB:** cada 6h en prod; on-demand en dev.
 6. **Series independientes:** manga y anime son entries distintos con `type`.
-7. **Errores de RSS:** visibles en el dashboard.
+7. **Errores de IMDB:** visibles en el dashboard.
 
 ## Stack conservado
 
@@ -43,7 +43,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 1 | Modelo de datos (`series`, `series_items`) | `[DONE]` | [epics/01-data-model.md](epics/01-data-model.md) |
 | 2 | Autenticación (bcrypt + guard + vistas) | `[DONE]` | [epics/02-auth.md](epics/02-auth.md) |
 | 3 | CRUD de series | `[DONE]` | [epics/03-series-crud.md](epics/03-series-crud.md) |
-| 4 | Motor RSS | `[DONE]` | [epics/04-rss-engine.md](epics/04-rss-engine.md) |
+| 4 | Scraper de IMDB | `[DONE]` | [epics/04-imdb-engine.md](epics/04-imdb-engine.md) |
 | 5 | Dashboard de actualizaciones | `[DONE]` | [epics/05-dashboard.md](epics/05-dashboard.md) |
 | 6 | Detalle de serie | `[DONE]` | [epics/06-series-detail.md](epics/06-series-detail.md) |
 | 7 | Pulido y UX | `[DONE]` | [epics/07-polish.md](epics/07-polish.md) |

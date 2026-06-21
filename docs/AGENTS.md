@@ -11,11 +11,11 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 ### Flujo de usuario objetivo
 
 1. El usuario hace login.
-2. Da de alta una serie: nombre, URL donde la lee/ve, portada (URL externa), capítulo actual, y opcionalmente un feed RSS.
-3. Cada vez que entra al dashboard, el sistema refresca los feeds RSS y le muestra:
+2. Da de alta una serie: nombre, URL donde la lee/ve, portada (URL externa), capítulo actual, y opcionalmente una URL de IMDB (`…/title/tt…/episodes/?season=N`).
+3. Cada vez que entra al dashboard, el sistema refresca desde IMDB y le muestra:
    - Qué series tienen actualizaciones.
    - Cuántos episodios/capítulos le faltan por ver (conteo de items nuevos no vistos).
-   - Errores de feeds visibles para que pueda corregirlos.
+   - Errores visibles para que pueda corregirlos (URL inválida, ttId inexistente, etc.).
 
 ---
 
@@ -26,10 +26,10 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 | 1 | Hashing de password | **`bcrypt`** (cost factor 10; migración de `md5` completada en Épica 2) |
 | 2 | Usuarios | **Multiusuario real** (filtrar siempre por `user_id`, índices estrictos) |
 | 3 | Portada | **Solo URL externa** (no subir archivos, no usar `multer`, no carpeta de imágenes) |
-| 4 | Detección de nº de capítulo | **Conteo de items RSS nuevos desde el último visto**. Si no funciona, se itera |
-| 5 | Cron de refresco RSS | **Cada 6h en producción** + **trigger on-demand para desarrollo** |
+| 4 | Detección de nº de capítulo | **Conteo de episodios de IMDB nuevos (ya emitidos) desde el último visto**. Si no funciona, se itera |
+| 5 | Cron de refresco IMDB | **Cada 6h en producción** + **trigger on-demand para desarrollo** |
 | 6 | Manga vs anime | **Entries independientes** con campo `type` (una serie no agrupa ambos) |
-| 7 | Fallos de RSS | **Error visible** en el dashboard para que el usuario lo corrija |
+| 7 | Fallos de IMDB | **Error visible** en el dashboard para que el usuario lo corrija |
 
 ---
 
@@ -85,7 +85,7 @@ cd frontend && npm install && API=http://localhost:3000 npm run dev
 ```
 backend/
   ecosystem.config.js          # PM2: app "mangacafe", cron_restart diario (ajustar a 6h en Épica 8)
-  package.json                 # deps: express, sqlite3, pug, bcrypt, xml2js, axios
+  package.json                 # deps: express, sqlite3, pug, bcrypt, axios
   src/
     index.mjs                  # Express app + rutas + middlewares verifyToken/getUser (exportados)
     auth.mjs                   # JWT custom (HMAC-SHA256, expira 1 año)

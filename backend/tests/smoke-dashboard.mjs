@@ -33,7 +33,7 @@ const { data: u } = await user.getBy('username', username)
 // Serie 1: con 3 items pendientes
 const s1 = await series.create(u.id, {
   type: 'manga', name: 'Con pendientes', url: null, cover_url: null,
-  current_chapter: 100, rss_url: null
+  current_chapter: 100, imdb_url: null
 })
 await seriesItem.insertMany(s1.id, [
   { guid: 'a1', title: 'Cap 101', link: 'http://x/1', pub_date: 1700000000 },
@@ -44,7 +44,7 @@ await seriesItem.insertMany(s1.id, [
 // Serie 2: con 1 item pendiente
 const s2 = await series.create(u.id, {
   type: 'anime', name: 'Un pendiente', url: null, cover_url: null,
-  current_chapter: 5, rss_url: null
+  current_chapter: 5, imdb_url: null
 })
 await seriesItem.insertMany(s2.id, [
   { guid: 'b1', title: 'Ep 6', link: 'http://x/6', pub_date: 1700003000 }
@@ -53,13 +53,13 @@ await seriesItem.insertMany(s2.id, [
 // Serie 3: sin items
 const s3 = await series.create(u.id, {
   type: 'manga', name: 'Sin items', url: null, cover_url: null,
-  current_chapter: 0, rss_url: null
+  current_chapter: 0, imdb_url: null
 })
 
-// Serie 4: con error de RSS para verificar visibilidad
+// Serie 4: con error de IMDB para verificar visibilidad
 const s4 = await series.create(u.id, {
   type: 'manga', name: 'Con error', url: null, cover_url: null,
-  current_chapter: 0, rss_url: 'http://invalido.invalid/feed'
+  current_chapter: 0, imdb_url: 'https://www.imdb.com/title/tt9999999/episodes/?season=1'
 })
 await series.update(s4.id, u.id, { last_error: 'ETIMEDOUT', last_checked_at: 1700005000 })
 

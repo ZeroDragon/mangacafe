@@ -65,7 +65,7 @@ export const resolveUserId = async (req, res, next) => {
 }
 
 const VALID_TYPES = ['manga', 'anime']
-const URL_FIELDS = ['url', 'cover_url', 'rss_url']
+const URL_FIELDS = ['url', 'cover_url', 'imdb_url']
 const isHttpUrl = (v) => typeof v === 'string' && /^https?:\/\/.+/.test(v)
 
 // Devuelve array de mensajes de error. `partial=true` permite omitir campos (PUT).
@@ -74,19 +74,19 @@ const validateSeries = (body, partial = false) => {
   const has = (k) => Object.prototype.hasOwnProperty.call(body, k)
 
   if (!partial || has('type')) {
-    if (!VALID_TYPES.includes(body.type)) errors.push('type debe ser "manga" o "anime"')
+    if (!VALID_TYPES.includes(body.type)) errors.push('type must be "manga" or "anime"')
   }
   if (!partial || has('name')) {
-    if (typeof body.name !== 'string' || !body.name.trim()) errors.push('name es obligatorio')
+    if (typeof body.name !== 'string' || !body.name.trim()) errors.push('name is required')
   }
   for (const f of URL_FIELDS) {
     if (has(f) && body[f] !== '' && body[f] != null) {
-      if (!isHttpUrl(body[f])) errors.push(`${f} debe ser una URL http(s)`)
+      if (!isHttpUrl(body[f])) errors.push(`${f} must be an http(s) URL`)
     }
   }
   if (has('current_chapter')) {
     const n = Number(body.current_chapter)
-    if (!Number.isFinite(n) || n < 0) errors.push('current_chapter debe ser >= 0')
+    if (!Number.isFinite(n) || n < 0) errors.push('current_chapter must be >= 0')
   }
   return errors
 }
@@ -117,7 +117,7 @@ app.post('/api/series', [verifyToken, getUser, resolveUserId], async (req, res) 
     url: req.body.url || null,
     cover_url: req.body.cover_url || null,
     current_chapter: req.body.current_chapter || 0,
-    rss_url: req.body.rss_url || null
+    imdb_url: req.body.imdb_url || null
   }
   const { error, id } = await series.create(res.userId, payload)
   if (error) return res.status(500).json({ error })
@@ -145,8 +145,8 @@ app.delete('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req,
   res.json({ success: true, token: res.newToken })
 })
 
-// --- RSS (Épica 4) ---
-// On-demand para el usuario actual: refresca todas SUS series con rss_url.
+// --- IMDB scraper (Épica 4) ---
+// On-demand para el usuario actual: refresca todas SUS series con imdb_url.
 app.post('/api/refresh', [verifyToken, getUser, resolveUserId], async (_req, res) => {
   const result = await refresher.refreshByUser(res.userId)
   res.json({ ...result, token: res.newToken })
@@ -162,7 +162,7 @@ app.post('/api/series/:id/refresh', [verifyToken, getUser, resolveUserId], async
 })
 
 // --- Dashboard (Épica 5) ---
-// Lee el estado actual (no bloquea con refresh RSS). El scheduler actualiza en background.
+// Lee el estado actual (no bloquea con refresh). El scheduler actualiza en background.
 app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, res) => {
   const { error, data } = await seriesItem.dashboardByUser(res.userId)
   if (error) return res.status(500).json({ error: 'Error fetching dashboard' })
@@ -173,7 +173,7 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
     url: s.url,
     cover_url: s.cover_url,
     current_chapter: s.current_chapter,
-    rss_url: s.rss_url,
+    imdb_url: s.imdb_url,
     last_error: s.last_error,
     last_checked_at: s.last_checked_at,
     pending: s.pending,
@@ -225,7 +225,7 @@ export { app }
 // Solo escucha cuando se ejecuta directamente (no al importarse en tests)
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
-  // Scheduler RSS: refresh al boot + cada 6h (Épica 4, decisión 5)
+  // Scheduler IMDB: refresh al boot + cada 6h (Épica 4, decisión 5)
   refresher.startScheduler({ runImmediately: true })
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)

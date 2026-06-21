@@ -1,8 +1,8 @@
 <template lang="pug">
-Loader(v-if="!loaded" text="Cargando serie…")
+Loader(v-if="!loaded" text="Loading series…")
 .series-detail(v-else)
   .back
-    router-link(:to="{ path: '/series' }") ‹ Volver a series
+    router-link(:to="{ path: '/series' }") ‹ Back to series
   header.head(v-if="series")
     .cover
       img(
@@ -16,57 +16,57 @@ Loader(v-if="!loaded" text="Cargando serie…")
     .info
       .top
         span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
-        span.badge.pending(v-if="pendingItems.length") {{ pendingItems.length }} pendiente(s)
+        span.badge.pending(v-if="pendingItems.length") {{ pendingItems.length }} pending
       h1.name {{ series.name }}
-      .chapter Capítulo actual: {{ series.current_chapter }}
+      .chapter Current chapter: {{ series.current_chapter }}
       .meta(v-if="series.url")
         a.outside(:href="series.url" target="_blank" rel="noopener")
           span.material-symbols-outlined open_in_new
-          span Abrir donde lo leo/veo
-      .rss-status(v-if="series.rss_url")
-        span.material-symbols-outlined rss_feed
-        span(v-if="series.last_error" class="rss-error" :title="series.last_error") Error de feed: {{ series.last_error }}
-        span(v-else-if="series.last_checked_at") Último refresco: {{ formatDate(series.last_checked_at) }}
-        span(v-else) Sin refrescar aún
-      .rss-status.empty(v-else)
+          span Open where I read/watch it
+      .imdb-status(v-if="series.imdb_url")
+        span.material-symbols-outlined movie
+        span(v-if="series.last_error" class="imdb-error" :title="series.last_error") IMDB error: {{ series.last_error }}
+        span(v-else-if="series.last_checked_at") Last refresh: {{ formatDate(series.last_checked_at) }}
+        span(v-else) Not refreshed yet
+      .imdb-status.empty(v-else)
         span.material-symbols-outlined info
-        span Sin feed RSS — agregá uno en editar para seguimiento automático
+        span No IMDB URL — add one in edit for automatic tracking
       .actions
         button.btn(@click="refresh" :disabled="refreshing")
           span.material-symbols-outlined {{ refreshing ? 'progress_activity' : 'sync' }}
-          span {{ refreshing ? 'Refrescando…' : 'Refrescar RSS' }}
+          span {{ refreshing ? 'Refreshing…' : 'Refresh IMDB' }}
         button.btn.all(@click="seenAll" :disabled="!pendingItems.length")
           span.material-symbols-outlined done_all
-          span Marcar todo visto
+          span Mark all as seen
         router-link.btn.edit(:to="{ path: `/series/${series.id}/edit` }")
           span.material-symbols-outlined edit
-          span Editar
+          span Edit
         button.btn.danger(@click="remove")
           span.material-symbols-outlined delete
-          span Eliminar
+          span Delete
   p.error(v-if="error") {{ error }}
   section.feed
-    h2(v-if="items.length") Capítulos / episodios
+    h2(v-if="items.length") Chapters / episodes
     .empty(v-if="!items.length")
       span.material-symbols-outlined inbox
-      p No hay items del feed todavía. {{ series.rss_url ? 'Probá refrescar.' : 'Agregá un feed RSS para seguimiento automático.' }}
+      p No feed items yet. {{ series.imdb_url ? 'Try refreshing.' : 'Add an IMDB episodes URL for automatic tracking.' }}
     ul.items(v-else)
       li.item(
         v-for="it in items"
         :key="it.id"
         :class="{ seen: it.seen }")
         .item-main
-          a.title(:href="itemLink(it)" target="_blank" rel="noopener") {{ it.title || '(sin título)' }}
+          a.title(:href="itemLink(it)" target="_blank" rel="noopener") {{ it.title || '(untitled)' }}
           .date {{ formatDate(it.pub_date) }}
         .item-actions
-          a.icon-link(v-if="itemLink(it)" :href="itemLink(it)" target="_blank" rel="noopener" title="Abrir")
+          a.icon-link(v-if="itemLink(it)" :href="itemLink(it)" target="_blank" rel="noopener" title="Open")
             span.material-symbols-outlined open_in_new
           button.icon-btn(
             v-if="!it.seen"
             @click="markItem(it)"
-            title="Marcar visto")
+            title="Mark as seen")
             span.material-symbols-outlined check
-          span.done(v-else title="Visto")
+          span.done(v-else title="Seen")
             span.material-symbols-outlined check_circle
 </template>
 
@@ -104,7 +104,7 @@ export default {
         if (e.response && e.response.status === 404) {
           this.$router.push('/series')
         } else {
-          this.error = 'No se pudo cargar la serie'
+          this.error = 'Could not load the series'
         }
       }
     },
@@ -113,7 +113,7 @@ export default {
         const res = await api.get(`/api/series/${this.$route.params.id}/feed`)
         this.items = res.data.data || []
       } catch (e) {
-        this.error = 'No se pudo cargar el feed'
+        this.error = 'Could not load the feed'
       }
     },
     itemLink (it) {
@@ -123,9 +123,9 @@ export default {
       try {
         await api.post(`/api/series/${this.$route.params.id}/items/${it.id}/seen`)
         it.seen = 1
-        this.$toast.success('Marcado como visto')
+        this.$toast.success('Marked as seen')
       } catch (e) {
-        this.$toast.error('No se pudo marcar el item')
+        this.$toast.error('Could not mark the item')
       }
     },
     async seenAll () {
@@ -133,10 +133,10 @@ export default {
         const res = await api.post(`/api/series/${this.$route.params.id}/seen-all`)
         await this.loadFeed()
         const n = res.data.updated || 0
-        if (n > 0) this.$toast.success(`${n} capítulo(s) marcado(s) como visto`)
-        else this.$toast.info('No había items pendientes')
+        if (n > 0) this.$toast.success(`${n} chapter(s) marked as seen`)
+        else this.$toast.info('No pending items')
       } catch (e) {
-        this.$toast.error('No se pudo marcar todo')
+        this.$toast.error('Could not mark all')
       }
     },
     async refresh () {
@@ -144,21 +144,21 @@ export default {
       try {
         await api.post(`/api/series/${this.$route.params.id}/refresh`)
         await Promise.all([this.loadSeries(), this.loadFeed()])
-        this.$toast.success('Feed refrescado')
+        this.$toast.success('Feed refreshed')
       } catch (e) {
-        this.$toast.error('No se pudo refrescar')
+        this.$toast.error('Could not refresh')
       } finally {
         this.refreshing = false
       }
     },
     async remove () {
-      if (!confirm(`¿Eliminar "${this.series.name}"? Se borrarán también sus items.`)) return
+      if (!confirm(`Delete "${this.series.name}"? Its items will also be deleted.`)) return
       try {
         await api.delete(`/api/series/${this.series.id}`)
-        this.$toast.success('Serie eliminada')
+        this.$toast.success('Series deleted')
         this.$router.push('/series')
       } catch (e) {
-        this.$toast.error('No se pudo eliminar')
+        this.$toast.error('Could not delete')
       }
     },
     formatDate (epoch) {
@@ -244,7 +244,7 @@ export default {
 .chapter
   font-size 14px
   opacity 0.75
-.meta, .rss-status
+.meta, .imdb-status
   font-size 13px
   display flex
   align-items center
@@ -253,7 +253,7 @@ export default {
     font-size 18px
   &.empty
     opacity 0.6
-  .rss-error
+  .imdb-error
     color var(--danger)
 .outside
   display inline-flex

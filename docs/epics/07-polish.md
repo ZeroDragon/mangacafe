@@ -57,7 +57,7 @@
 
 ## Cómo reproducir la verificación
 
-- **Backend (regresión):** `cd backend && for t in smoke-auth smoke-data-model smoke-series-crud smoke-rss-engine smoke-dashboard smoke-series-detail; do node tests/$t.mjs; done`
+- **Backend (regresión):** `cd backend && for t in smoke-auth smoke-data-model smoke-series-crud smoke-imdb-engine smoke-dashboard smoke-series-detail; do node tests/$t.mjs; done`
 - **Frontend:** `cd frontend && API=http://localhost:3000 BUILD_OUT_DIR=dist npm run build`.
 - **Manual (UX):** levantar backend y frontend en dev (`npm run dev`), loguearse, crear series, jugar con filtros, búsqueda, toasts (acciones de crear/editar/eliminar/refresh), y probar DevTools a 360px de ancho.
 

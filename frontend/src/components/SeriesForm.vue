@@ -1,9 +1,9 @@
 <template lang="pug">
 .series-form
-  h1 {{ isEdit ? 'Editar serie' : 'Nueva serie' }}
+  h1 {{ isEdit ? 'Edit series' : 'New series' }}
   form.card(@submit.prevent="submit")
     label
-      span Tipo
+      span Type
       .type-toggle
         button(
           type="button"
@@ -14,23 +14,23 @@
           :class="{ active: form.type === 'anime' }"
           @click="form.type = 'anime'") Anime
     label
-      span Nombre
+      span Name
       input(v-model="form.name" type="text" required)
     label
-      span URL (dónde la lees/ves)
+      span URL (where you read/watch it)
       input(v-model="form.url" type="url" placeholder="https://...")
     label
-      span URL de la portada
+      span Cover URL
       input(v-model="form.cover_url" type="url" placeholder="https://...")
     label
-      span Capítulo actual
+      span Current chapter
       input(v-model.number="form.current_chapter" type="number" min="0" step="1")
     label
-      span URL del feed RSS (opcional)
-      input(v-model="form.rss_url" type="url" placeholder="https://...")
+      span IMDB episodes URL (optional)
+      input(v-model="form.imdb_url" type="url" placeholder="https://www.imdb.com/title/tt.../episodes/?season=2")
     .actions
-      button(type="submit" :disabled="loading") {{ isEdit ? 'Guardar' : 'Crear' }}
-      button.cancel(type="button" @click="$router.push('/series')") Cancelar
+      button(type="submit" :disabled="loading") {{ isEdit ? 'Save' : 'Create' }}
+      button.cancel(type="button" @click="$router.push('/series')") Cancel
     p.error(v-if="error") {{ error }}
 </template>
 
@@ -47,7 +47,7 @@ export default {
         url: '',
         cover_url: '',
         current_chapter: 0,
-        rss_url: ''
+        imdb_url: ''
       },
       loading: false,
       error: ''
@@ -72,21 +72,21 @@ export default {
           url: s.url || '',
           cover_url: s.cover_url || '',
           current_chapter: s.current_chapter,
-          rss_url: s.rss_url || ''
+          imdb_url: s.imdb_url || ''
         }
       } catch (e) {
-        this.error = (e.response && e.response.data && e.response.data.error) || 'No se pudo cargar la serie'
+        this.error = (e.response && e.response.data && e.response.data.error) || 'Could not load the series'
       }
     },
     validate () {
       const errs = []
-      if (!this.form.name.trim()) errs.push('El nombre es obligatorio')
+      if (!this.form.name.trim()) errs.push('Name is required')
       if (this.form.current_chapter === '' || this.form.current_chapter === null || Number(this.form.current_chapter) < 0) {
-        errs.push('El capítulo actual debe ser >= 0')
+        errs.push('Current chapter must be >= 0')
       }
-      for (const f of ['url', 'cover_url', 'rss_url']) {
+      for (const f of ['url', 'cover_url', 'imdb_url']) {
         const v = this.form[f] && this.form[f].trim()
-        if (v && !/^https?:\/\//.test(v)) errs.push(`${f} debe ser una URL http(s)`)
+        if (v && !/^https?:\/\//.test(v)) errs.push(`${f} must be an http(s) URL`)
       }
       return errs
     },
@@ -104,19 +104,19 @@ export default {
         url: this.form.url.trim() || null,
         cover_url: this.form.cover_url.trim() || null,
         current_chapter: Number(this.form.current_chapter) || 0,
-        rss_url: this.form.rss_url.trim() || null
+        imdb_url: this.form.imdb_url.trim() || null
       }
       try {
         if (this.isEdit) {
           await api.put(`/api/series/${this.$route.params.id}`, payload)
-          this.$toast.success('Serie actualizada')
+          this.$toast.success('Series updated')
         } else {
           await api.post('/api/series', payload)
-          this.$toast.success('Serie creada')
+          this.$toast.success('Series created')
         }
         this.$router.push('/series')
       } catch (e) {
-        this.error = (e.response && e.response.data && e.response.data.error) || 'Error inesperado'
+        this.error = (e.response && e.response.data && e.response.data.error) || 'Unexpected error'
       } finally {
         this.loading = false
       }

@@ -26,7 +26,7 @@ const seriesRes = await series.create(u.id, {
   url: 'https://manga.example.com/opm',
   cover_url: 'https://cdn.example.com/opm.jpg',
   current_chapter: 100,
-  rss_url: 'https://manga.example.com/opm/rss'
+  imdb_url: 'https://www.imdb.com/title/tt0000001/episodes/?season=1'
 })
 if (seriesRes.error || !seriesRes.id) fail('create serie:', seriesRes.error)
 const seriesId = seriesRes.id
@@ -83,12 +83,12 @@ const other = await series.getById(seriesId, u.id + 9999)
 if (other.data) fail('ownership falló: otro usuario ve la serie')
 log('Ownership OK (otro usuario no la ve)')
 
-log('Update serie: cambiar current_chapter y rss_url')
-const upd = await series.update(seriesId, u.id, { current_chapter: 102, rss_url: 'https://new.url/rss' })
+log('Update serie: cambiar current_chapter y imdb_url')
+const upd = await series.update(seriesId, u.id, { current_chapter: 102, imdb_url: 'https://www.imdb.com/title/tt0000002/episodes/?season=1' })
 if (upd.error) fail('update:', upd.error)
 const { data: updated } = await series.getById(seriesId, u.id)
-log(`Tras update: current_chapter=${updated.current_chapter} rss_url=${updated.rss_url}`)
-if (updated.current_chapter !== 102 || updated.rss_url !== 'https://new.url/rss') fail('update no aplicado')
+log(`Tras update: current_chapter=${updated.current_chapter} imdb_url=${updated.imdb_url}`)
+if (updated.current_chapter !== 102 || updated.imdb_url !== 'https://www.imdb.com/title/tt0000002/episodes/?season=1') fail('update no aplicado')
 
 log('Remove serie: borra en cascada los items')
 const del = await series.remove(seriesId, u.id)

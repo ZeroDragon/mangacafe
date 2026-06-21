@@ -34,7 +34,7 @@ const { data: uB } = await user.getBy('username', usernameB)
 // Serie de A con 3 items (orden: 103, 102, 101 por pub_date DESC)
 const s1 = await series.create(uA.id, {
   type: 'manga', name: 'Detalle', url: 'http://leer.com', cover_url: 'http://img.com/x.jpg',
-  current_chapter: 100, rss_url: 'http://feed.com/rss'
+  current_chapter: 100, imdb_url: 'https://www.imdb.com/title/tt0000001/episodes/?season=1'
 })
 await seriesItem.insertMany(s1.id, [
   { guid: 'a1', title: 'Cap 101', link: 'http://leer.com/101', pub_date: 1700000000 },
@@ -44,7 +44,7 @@ await seriesItem.insertMany(s1.id, [
 
 // Serie de B (para ownership)
 const sB = await series.create(uB.id, {
-  type: 'anime', name: 'Serie B', url: null, cover_url: null, current_chapter: 0, rss_url: null
+  type: 'anime', name: 'Serie B', url: null, cover_url: null, current_chapter: 0, imdb_url: null
 })
 
 const tokenA = (await request('post', '/api/login', { username: usernameA, password: 'pass' })).data.token

@@ -33,7 +33,31 @@ const createIndex = (name, schema) => {
 // Resuelve cuando todas las tablas e índices están listos. Útil para tests/scripts
 // que importan los modelos y necesitan garantir el schema antes de queryar.
 // El backend en producción no lo necesita (las requests llegan después del boot).
+
+// Renombra una columna si existe la vieja y no la nueva (SQLite >= 3.25).
+// Idempotente. Usado para migrar series.rss_url -> series.imdb_url.
+const renameColumnIfMissing = (table, oldCol, newCol) => {
+  return new Promise(resolve => {
+    db.all(`PRAGMA table_info(${table})`, (err, rows) => {
+      if (err) return resolve({ error: err })
+      const cols = rows.map(r => r.name)
+      if (cols.includes(newCol) || !cols.includes(oldCol)) {
+        return resolve({ info: `no rename needed (${table}.${newCol})` })
+      }
+      db.run(`ALTER TABLE ${table} RENAME COLUMN ${oldCol} TO ${newCol}`, (err) => {
+        if (err) return resolve({ error: err })
+        console.log(`Renamed ${table}.${oldCol} -> ${newCol}`)
+        resolve({ info: `renamed ${table}.${oldCol} -> ${newCol}` })
+      })
+    })
+  })
+}
+
 export const ready = (async () => {
+  // Migración previa: si existe la tabla series vieja con rss_url, renombrarla.
+  // (CREATE TABLE usa imdb_url; este paso arregla bases preexistentes.)
+  await renameColumnIfMissing('series', 'rss_url', 'imdb_url')
+
   const tables = await Promise.all([
     createTable('users', `
       CREATE TABLE users (
@@ -51,7 +75,7 @@ export const ready = (async () => {
         url TEXT,
         cover_url TEXT,
         current_chapter INTEGER NOT NULL DEFAULT 0,
-        rss_url TEXT,
+        imdb_url TEXT,
         last_known_total INTEGER,
         last_checked_at INTEGER,
         last_error TEXT,
