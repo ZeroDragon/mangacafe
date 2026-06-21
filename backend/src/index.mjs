@@ -232,12 +232,16 @@ app.post('/api/series/:id/seen-all', [verifyToken, getUser, resolveUserId], asyn
 
 // --- Crunchyroll (sync externo, on-demand) ---
 // El usuario pasa sus credenciales de Crunchyroll; no se persisten.
-// Devuelve su watchlist normalizada (serie + último episodio visto / estado).
+// Cada request crea su propia instancia de CrunchyrollClient, así que los
+// tokens no se pisan entre usuarios. Devuelve su watchlist normalizada.
 app.post('/api/crunchyroll/sync', [verifyToken, getUser], async (req, res) => {
   const { email, password } = req.body || {}
-  const result = await crunchyroll.getWatchlist(email, password)
-  if (result.error) return res.status(502).json({ error: result.error })
-  res.json({ data: result.data, token: res.newToken })
+  try {
+    const data = await crunchyroll.getWatchlist(email, password)
+    res.json({ data, token: res.newToken })
+  } catch (e) {
+    res.status(502).json({ error: e.message })
+  }
 })
 
 export { app }
