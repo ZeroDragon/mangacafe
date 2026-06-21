@@ -13,7 +13,8 @@
     .top
       span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
       span.pending(v-if="series.pending > 0") {{ series.pending }} pending
-    h3.name {{ series.name }}
+    h3.name
+      router-link(:to="{ path: `/series/${series.id}` }") {{ series.name }}
     .chapter Current ch.: {{ series.current_chapter }}
     .actions
       button.btn.icon-only(@click="$emit('edit', series)" title="Edit")
@@ -102,6 +103,11 @@ export default {
   font-weight 500
   overflow hidden
   text-overflow ellipsis
+  a
+    color inherit
+    text-decoration none
+    &:hover
+      text-decoration underline
 .chapter
   font-size 13px
   opacity 0.75
