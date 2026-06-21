@@ -151,6 +151,26 @@ const markUnseen = (itemId, userId) => {
   })
 }
 
+// Borra los items de una serie con pub_date > limitEpoch (episodios no emitidos).
+// Sincroniza la DB: fetchEpisodes ya no inserta futuros, pero los que se colaron
+// antes (bugs de tz, cambios de fecha en IMDB) deben purgarse para no contar como
+// pendientes. No filtra por user_id: el series_id ya es único por serie/usuario.
+const deleteFuture = (seriesId, limitEpoch) => {
+  return new Promise(resolve => {
+    db.run(
+      `DELETE FROM series_items WHERE series_id = ? AND pub_date > ?`,
+      [seriesId, limitEpoch],
+      function (err) {
+        if (err) {
+          console.error(err)
+          return resolve({ error: err })
+        }
+        resolve({ success: true, deleted: this.changes })
+      }
+    )
+  })
+}
+
 // Marca como vistos todos los items de la serie con id <= itemId (o hasta la fecha upToDate).
 // upToDate: itemId del item límite (inclusive). Todos los anteriores (por pub_date/created_at) también se marcan.
 const markSeenUpTo = (seriesId, itemId) => {
@@ -222,5 +242,6 @@ export default {
   markUnseen,
   markSeenUpTo,
   markAllSeen,
-  listBySeries
+  listBySeries,
+  deleteFuture
 }

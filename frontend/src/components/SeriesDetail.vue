@@ -57,7 +57,7 @@ Loader(v-if="!loaded" text="Loading series…")
         :class="{ seen: it.seen }")
         .item-main
           a.title(:href="itemLink(it)" target="_blank" rel="noopener") {{ it.title || '(untitled)' }}
-          .date {{ formatDate(it.pub_date) }}
+          .date {{ formatDate(it.pub_date, true) }}
         .item-actions
           a.icon-link(v-if="itemLink(it)" :href="itemLink(it)" target="_blank" rel="noopener" title="Open")
             span.material-symbols-outlined open_in_new
@@ -171,9 +171,13 @@ export default {
         this.$toast.error('Could not delete')
       }
     },
-    formatDate (epoch) {
+    formatDate (epoch, calendar = false) {
       if (!epoch) return ''
-      return new Date(epoch * 1000).toLocaleDateString()
+      // calendar=true: la fecha viene como medianoche UTC de un día concreto
+      // (fecha de emisión de IMDB); hay que mostrarla en UTC para que no se
+      // desplace -1 día en zonas horarias negativas. calendar=false: instante
+      // real (ej. last_checked_at), se muestra en TZ local del navegador.
+      return new Date(epoch * 1000).toLocaleDateString(undefined, calendar ? { timeZone: 'UTC' } : undefined)
     },
     onCoverError (e) {
       e.target.style.display = 'none'

@@ -17,6 +17,18 @@ const DEFAULT_UA = process.env.IMDB_USER_AGENT ||
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 const DEFAULT_TIMEOUT = Number(process.env.IMDB_TIMEOUT) || 15000
 
+// Zona horaria usada para decidir "qué día es hoy" al filtrar episodios futuros.
+// IMDB devuelve la fecha de emisión como fecha calendaria (sin zona horaria);
+// para saber si un episodio YA se emitió hay que comparar contra el día actual
+// en una zona horaria concreta. Por defecto usamos la TZ del sistema del proceso
+// (en dev del usuario suele ser su TZ local); en producción se puede afinar con
+// IMDB_TZ (ej. "America/Mexico_City"). Comparar fechas calendariais evita que un
+// episodio aparezca como disponible el día ANTERIOR a su estreno en zonas
+// occidentales (UTC negativo), que es lo que pasaba al comparar instantes UTC.
+const IMDB_TZ = process.env.IMDB_TZ ||
+  (typeof Intl !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+  'UTC'
+
 // Extrae { ttId, season } de una URL de episodios de IMDB.
 // Acepta: https://www.imdb.com/title/tt19223420/episodes/?season=2
 // También soporta ?season=1 (default 1) y sin /episodes/ (sólo /title/tt...).
@@ -49,6 +61,9 @@ const SEASON_QUERY = `query Season($titleId: ID!, $season: String!) {
 }`
 
 // epoch (segundos) para una fecha {year,month,day} a 00:00 UTC; null si falta year.
+// El epoch se almacena así (medianoche UTC) y el frontend DEBE mostrarlo con
+// timeZone: 'UTC' para que la fecha calendaria no se desplace según la TZ del
+// navegador.
 const releaseToEpoch = (rd) => {
   if (!rd || !rd.year) return null
   // month/day pueden venir undefined para fechas parciales; default a 1.
@@ -56,6 +71,33 @@ const releaseToEpoch = (rd) => {
   const d = rd.day || 1
   const ms = Date.UTC(rd.year, m - 1, d, 0, 0, 0)
   return Math.floor(ms / 1000)
+}
+
+// {year,month,day} del instante actual en la zona horaria configurada (IMDB_TZ).
+const todayInTz = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: IMDB_TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date())
+  const get = (t) => Number(parts.find(p => p.type === t).value)
+  return { year: get('year'), month: get('month'), day: get('day') }
+}
+
+// Compara dos fechas calendariais: -1 si a<b, 0 si ==, 1 si a>b.
+const cmpDate = (a, b) => {
+  if (a.year !== b.year) return a.year < b.year ? -1 : 1
+  if (a.month !== b.month) return a.month < b.month ? -1 : 1
+  if (a.day !== b.day) return a.day < b.day ? -1 : 1
+  return 0
+}
+
+// Epoch límite (segundos): items con pub_date <= este valor ya se emitieron.
+// Es la medianoche UTC del día actual en IMDB_TZ. Como pub_date se guarda como
+// medianoche UTC del día de emisión, comparar `pub_date > airedUntilEpoch()`
+// identifica fechas calendariais posteriores a hoy (episodios no emitidos).
+// Útil para purgar de la DB items futuros insertados por bugs previos.
+const airedUntilEpoch = () => {
+  const today = todayInTz()
+  return Math.floor(Date.UTC(today.year, today.month - 1, today.day, 0, 0, 0) / 1000)
 }
 
 // Trae los episodios de una temporada desde IMDB y los normaliza a items del feed.
@@ -103,14 +145,19 @@ const fetchEpisodes = async (imdbUrl, opts = {}) => {
   const eps = body?.data?.title?.episodes?.episodes
   if (!eps) throw new Error('IMDB: title not found or not a TV series')
 
-  const nowSec = Math.floor(Date.now() / 1000)
+  // "Hoy" como fecha calendaria en la tz configurada: un episodio está disponible
+  // cuando su fecha de emisión <= hoy (en esa tz). Comparar fechas calendariais
+  // (no instantes) evita el desfase de un día en zonas horarias negativas.
+  const today = todayInTz()
   const items = []
   for (const edge of (eps.edges || [])) {
     const n = edge?.node
     if (!n || !n.id) continue
-    const pubDate = releaseToEpoch(n.releaseDate)
-    if (pubDate == null) continue           // sin fecha → no emitido
-    if (pubDate > nowSec) continue          // futuro → aún no disponible
+    const rd = n.releaseDate
+    if (!rd || !rd.year) continue   // sin fecha → no emitido
+    const released = { year: rd.year, month: rd.month || 1, day: rd.day || 1 }
+    if (cmpDate(released, today) > 0) continue   // futuro → aún no disponible
+    const pubDate = releaseToEpoch(rd)
     const titleText = n.titleText?.text || '(untitled)'
     items.push({
       guid: n.id,
@@ -123,4 +170,4 @@ const fetchEpisodes = async (imdbUrl, opts = {}) => {
 }
 
 export default fetchEpisodes
-export { parseImdbUrl, SEASON_QUERY }
+export { parseImdbUrl, SEASON_QUERY, airedUntilEpoch }

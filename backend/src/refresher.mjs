@@ -1,7 +1,7 @@
 import db from './models/db.mjs'
 import series from './models/series.mjs'
 import seriesItem from './models/series_item.mjs'
-import fetchEpisodes from './imdb.mjs'
+import fetchEpisodes, { airedUntilEpoch } from './imdb.mjs'
 
 const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000 // 6h (decisión 5)
 const DELAY_BETWEEN_FETCHES_MS = 800 // rate limit suave entre fetches
@@ -15,6 +15,9 @@ const refreshSeries = async (s) => {
   try {
     const { items, total } = await fetchEpisodes(s.imdb_url)
     const { inserted } = await seriesItem.insertMany(s.id, items)
+    // Sincroniza: purga items con fecha futura que se colaron antes (bugs de tz
+    // previos, cambios de fecha en IMDB). Así no cuentan como pendientes.
+    await seriesItem.deleteFuture(s.id, airedUntilEpoch())
     await series.update(s.id, s.user_id, {
       last_known_total: items.length,
       last_checked_at: now(),

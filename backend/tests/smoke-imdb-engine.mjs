@@ -58,13 +58,13 @@ process.env.IMDB_GRAPHQL_ENDPOINT = gqlURL
 const imdbURL = (titleId, season) => `https://www.imdb.com/title/${titleId}/episodes/?season=${season}`
 
 // Helper para construir la "data" GraphQL con N episodios.
-// Cada episodio se emite hace (N - i) * 86400s a partir de "ahora".
+// Usa fechas FIJAS (pasado lejano / futuro lejano) en vez de "ahora", para que
+// el filtrado de emitido-vs-futuro sea determinista e independiente de la zona
+// horaria en la que corra el test.
 const seasonData = (titleId, count, { futureEp = false, noDateEp = false } = {}) => {
-  const now = Math.floor(Date.now() / 1000)
   const edges = []
   for (let i = 1; i <= count; i++) {
-    const ts = now - (count - i) * 86400 // ordenados: el último es el más reciente
-    const d = new Date(ts * 1000)
+    const d = new Date(Date.UTC(2020, 0, i)) // 2020-01-0i
     edges.push({
       position: i,
       node: {
@@ -76,8 +76,7 @@ const seasonData = (titleId, count, { futureEp = false, noDateEp = false } = {})
     })
   }
   if (futureEp) {
-    const future = now + 30 * 86400
-    const d = new Date(future * 1000)
+    const d = new Date(Date.UTC(2099, 0, 1))
     edges.push({
       position: count + 1,
       node: {
@@ -136,6 +135,40 @@ if (f2.items.some(i => i.title.includes('futuro'))) fail('un episodio futuro se 
 if (f2.items.some(i => i.title.includes('Sin fecha'))) fail('un episodio sin fecha se coló')
 log('  filtrado OK (futuro y sin fecha excluidos)')
 
+// Caso de regresión del bug del desfase: un episodio con fecha "hoy" (en la tz
+// del proceso) debe estar disponible, y uno con "mañana" debe filtrarse. Antes
+// se comparaba por instante UTC y aparecían un día antes en zonas occidentales.
+log('fetchEpisodes: episodio de hoy disponible, de mañana filtrado (regresión desfase)')
+{
+  const now = new Date()
+  // "Hoy" como fecha calendaria en la tz del proceso (igual que hace imdb.mjs).
+  const tzParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now)
+  const g = (t) => Number(tzParts.find(p => p.type === t).value)
+  const today = { year: g('year'), month: g('month'), day: g('day') }
+  const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  const tomorrow = { year: tomorrowDate.getFullYear(), month: tomorrowDate.getMonth() + 1, day: tomorrowDate.getDate() }
+  RESPONSES['tt200:1'] = {
+    title: {
+      episodes: {
+        episodes: {
+          total: 2,
+          edges: [
+            { position: 1, node: { id: 'tt200-TODAY', titleText: { text: 'Hoy' }, canonicalUrl: 'http://imdb/today', releaseDate: { day: today.day, month: today.month, year: today.year } } },
+            { position: 2, node: { id: 'tt200-TOMORROW', titleText: { text: 'Mañana' }, canonicalUrl: 'http://imdb/tomorrow', releaseDate: { day: tomorrow.day, month: tomorrow.month, year: tomorrow.year } } }
+          ]
+        }
+      }
+    }
+  }
+  const r = await fetchEpisodes(imdbURL('tt200', 1))
+  if (r.items.length !== 1) fail(`esperaba 1 item (solo el de hoy), hay ${r.items.length}`)
+  if (r.items[0].guid !== 'tt200-TODAY') fail(`debería ser el de hoy, vino ${r.items[0].guid}`)
+  log('  regresión desfase OK (hoy entra, mañana se filtra)')
+}
+
 log('fetchEpisodes: url inválida -> error')
 try {
   await fetchEpisodes('https://no-imdb.com/foo')
@@ -189,6 +222,21 @@ if (r2.inserted !== 0) fail(`esperaba 0 insertados (dedupe), vino ${r2.inserted}
 const pend2 = await seriesItem.pendingCount(sid1)
 if (pend2.data !== 3) fail('pendingCount debería seguir en 3 tras dedupe')
 log('  dedupe OK')
+
+log('refreshSeries purga items con fecha futura insertados antes (regresión)')
+// Simulamos el bug previo: insertamos manualmente un item con fecha lejana en
+// el futuro. El refresh debe borrarlo (sincronización), aunque el mock siga
+// devolviendo los 3 episodios del pasado (2020). El item futuro "fantasma"
+// desaparece de la cuenta de pendientes.
+const { airedUntilEpoch } = await import('../src/imdb.mjs')
+const futureEpoch = airedUntilEpoch() + 365 * 86400 // +1 año
+await seriesItem.insertMany(sid1, [{ guid: 'tt111-GHOST', title: 'Fantasma futuro', link: 'http://x', pub_date: futureEpoch }])
+let pendGhost = await seriesItem.pendingCount(sid1)
+if (pendGhost.data !== 4) fail(`tras insertar fantasma debería haber 4 pendientes, hay ${pendGhost.data}`)
+const rPurge = await refresher.refreshSeries({ id: sid1, user_id: u.id, imdb_url: imdbURL('tt111', 1) })
+let pendAfterPurge = await seriesItem.pendingCount(sid1)
+if (pendAfterPurge.data !== 3) fail(`tras refresh el fantasma futuro debería purgarse (volver a 3), hay ${pendAfterPurge.data}`)
+log(`  purga de futuros OK (4 -> ${pendAfterPurge.data})`)
 
 log('refreshSeries serie SIN imdb_url -> skipped')
 const c2 = await series.create(u.id, {
