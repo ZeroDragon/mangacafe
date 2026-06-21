@@ -60,8 +60,24 @@ export default {
   },
   async mounted () {
     if (this.isEdit) await this.load()
+    else this.prefillFromQuery()
   },
   methods: {
+    // Pre-puebla el form desde query params (uso típico: botón "Add" en el
+    // listado de Crunchyroll). Solo si el query trae los campos; type default
+    // 'anime' cuando viene de ahí.
+    prefillFromQuery () {
+      const q = this.$route.query || {}
+      if (!Object.keys(q).length) return
+      if (q.type === 'anime' || q.type === 'manga') this.form.type = q.type
+      if (typeof q.name === 'string' && q.name) this.form.name = q.name
+      if (typeof q.url === 'string' && q.url) this.form.url = q.url
+      if (typeof q.cover_url === 'string' && q.cover_url) this.form.cover_url = q.cover_url
+      if (typeof q.imdb_url === 'string' && q.imdb_url) this.form.imdb_url = q.imdb_url
+      if (q.current_chapter !== undefined && q.current_chapter !== null && q.current_chapter !== '') {
+        this.form.current_chapter = Number(q.current_chapter) || 0
+      }
+    },
     async load () {
       try {
         const res = await api.get(`/api/series/${this.$route.params.id}`)

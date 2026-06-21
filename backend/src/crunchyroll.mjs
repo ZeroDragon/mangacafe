@@ -12,6 +12,7 @@
 
 const BASE = 'https://beta-api.crunchyroll.com'
 const TOKEN_URL = `${BASE}/auth/v1/token`
+const SUGGEST_BASE = 'https://v3.sg.media-imdb.com/suggestion'
 
 // Client credentials del cliente web de Crunchyroll (públicas, vienen en el
 // bundle del front). Las reutilizamos solo como puerta de entrada del OAuth.
@@ -54,19 +55,74 @@ const normalize = (it) => {
   else if (partial) status = 'incomplete'
   else status = 'pending'
 
+  // URL pública de Crunchyroll para abrir la serie. El panel trae series_id +
+  // series_slug_title en episode_metadata; con eso armamos /series/<id>/<slug>.
+  // Si no están (PVs, películas), caemos a null.
+  const seriesId = m.series_id
+  const seriesSlug = m.series_slug_title
+  const crUrl = seriesId
+    ? `https://www.crunchyroll.com/series/${seriesId}${seriesSlug ? '/' + seriesSlug : ''}`
+    : null
+
+  // Thumbnail del episodio desde el panel, por si IMDB no resuelve cover.
+  // Estructura: panel.images.thumbnail[0] = [{source,width,height}, ...]
+  const thumbs = panel.images?.thumbnail?.[0]
+  const crPoster = thumbs?.length ? thumbs[thumbs.length - 1].source : null
+
   return {
     name,
     season,
     episode,
     title,
     status,
-    label: status === 'unstarted' ? 'sin empezar' : epLabel(season, episode)
+    label: status === 'unstarted' ? 'unstarted' : epLabel(season, episode),
+    cr_url: crUrl,
+    cr_poster: crPoster
   }
 }
 
 // Orden de interés: lo que estás viendo primero, luego estrenos pendientes,
 // después lo completado y al final lo que ni arrancaste.
 const RANK = { incomplete: 0, pending: 1, watched: 2, unstarted: 3 }
+
+// Resuelve un nombre de serie a su ttId + poster de IMDB vía la API pública de
+// sugerencias (la que usa el autocomplete de imdb.com). Sin API key.
+//
+// Devuelve { ttId, label, poster, imdbUrl, season } ya armado para pre-poblar
+// el alta de series, o { error } si no hay match. season se normaliza a string
+// y default '1' (algunos animes arrancan sin temporada explícita).
+export async function resolveImdb(name, season) {
+  if (!name || !String(name).trim()) return { error: 'name is required' }
+  const q = String(name).trim()
+  // La URL de sugerencias se indexa por la primera letra (minúscula) del query.
+  const first = encodeURIComponent(q[0].toLowerCase())
+  const path = encodeURIComponent(q) + '.json'
+  const url = `${SUGGEST_BASE}/${first}/${path}`
+
+  let res
+  try {
+    res = await fetch(url, { headers: { Accept: 'application/json' } })
+  } catch (e) {
+    return { error: `Network error talking to IMDB: ${e.message}` }
+  }
+  if (!res.ok) return { error: `IMDB suggestion HTTP ${res.status}` }
+
+  const j = await res.json().catch(() => null)
+  const hits = (j && j.d) || []
+  if (!hits.length) return { error: 'no IMDB match' }
+
+  // Preferimos series de TV (qid=tvSeries); si no, primer hit.
+  const hit = hits.find(x => x.qid === 'tvSeries') || hits[0]
+  const ttId = hit.id
+  const s = season && String(season) !== '0' ? String(season) : '1'
+  return {
+    ttId,
+    label: hit.l || q,
+    poster: (hit.i && hit.i.imageUrl) || null,
+    imdbUrl: `https://www.imdb.com/title/${ttId}/episodes/?season=${s}`,
+    season: s
+  }
+}
 
 // Instancia de cliente de Crunchyroll, una por request del backend.
 // Las credenciales viven solo en la instancia y no se persisten.

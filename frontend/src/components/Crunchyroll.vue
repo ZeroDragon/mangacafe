@@ -4,15 +4,17 @@
     .title
       h1 Crunchyroll
       .summary(v-if="items.length")
-        span {{ items.length }} series en tu lista
+        span {{ items.length }} series in your list
         span.dot ·
-        span {{ counts.incomplete }} viéndose
+        span {{ counts.incomplete }} watching
         span.dot ·
-        span {{ counts.pending }} pendientes
+        span {{ counts.pending }} pending
         span.dot ·
-        span {{ counts.watched }} vistas
+        span {{ counts.watched }} watched
         span.dot ·
-        span {{ counts.unstarted }} sin empezar
+        span {{ counts.unstarted }} unstarted
+        span.dot(v-if="syncedAgo")
+        span.cached(v-if="syncedAgo") updated {{ syncedAgo }}
 
   // Form de credenciales (no se persisten; el email se recuerda por comodidad)
   form.credentials(@submit.prevent="sync")
@@ -25,7 +27,7 @@
         autocomplete="username"
         required)
     .field
-      label(for="cr-pass") Contraseña
+      label(for="cr-pass") Password
       input#cr-pass(
         v-model="password"
         type="password"
@@ -34,7 +36,14 @@
         required)
     button.sync(type="submit" :disabled="loading || !email || !password")
       span.material-symbols-outlined {{ loading ? 'progress_activity' : 'sync' }}
-      span.label {{ loading ? 'Sincronizando…' : 'Sync my list' }}
+      span.label {{ loading ? 'Syncing…' : (synced ? 'Re-sync' : 'Sync my list') }}
+    button.forget(
+      v-if="synced"
+      type="button"
+      @click="forgetCache"
+      title="Clear saved list")
+      span.material-symbols-outlined delete
+      span.label Clear
 
   p.error(v-if="error") {{ error }}
 
@@ -42,7 +51,7 @@
 
   .empty(v-else-if="synced && !items.length")
     span.material-symbols-outlined inbox
-    p Tu watchlist de Crunchyroll está vacía.
+    p Your Crunchyroll watchlist is empty.
 
   // Filtros por estado
   .filters(v-if="items.length")
@@ -57,9 +66,10 @@
   table.wl-table(v-if="filtered.length")
     thead
       tr
-        th Serie
-        th Último episodio
-        th Estado
+        th Series
+        th Latest episode
+        th Status
+        th
     tbody
       tr(v-for="it in filtered" :key="it.name")
         td.name {{ it.name }}
@@ -68,11 +78,19 @@
           span.ep-title(v-if="it.title && it.status !== 'unstarted'")  · {{ it.title }}
         td.status
           span.badge(:class="it.status") {{ STATUS_TEXT[it.status] }}
+        td.actions
+          button.add-series(
+            type="button"
+            @click="addToSeries(it)"
+            :disabled="resolving === it.name"
+            title="Add to series")
+            span.material-symbols-outlined {{ resolving === it.name ? 'progress_activity' : 'add_circle' }}
+            span.label {{ resolving === it.name ? '…' : 'Add' }}
 
   .empty.filtered(v-else-if="items.length")
     span.material-symbols-outlined filter_alt_off
-    p No hay series en este filtro.
-    button.reset(@click="filter = 'all'") Ver todo
+    p No series in this filter.
+    button.reset(@click="filter = 'all'") See all
 </template>
 
 <script>
@@ -80,32 +98,79 @@ import api from '../api.js'
 import Loader from './Loader.vue'
 
 const FILTERS = [
-  { key: 'all', label: 'Todas' },
-  { key: 'incomplete', label: 'Viéndose' },
-  { key: 'pending', label: 'Pendientes' },
-  { key: 'watched', label: 'Vistas' },
-  { key: 'unstarted', label: 'Sin empezar' }
+  { key: 'all', label: 'All' },
+  { key: 'incomplete', label: 'Watching' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'watched', label: 'Watched' },
+  { key: 'unstarted', label: 'Unstarted' }
 ]
 
 const STATUS_TEXT = {
-  incomplete: 'Incompleto',
-  pending: 'Pendiente',
-  watched: 'Visto',
-  unstarted: 'Sin empezar'
+  incomplete: 'Incomplete',
+  pending: 'Pending',
+  watched: 'Watched',
+  unstarted: 'Unstarted'
 }
+
+const CACHE_KEY = 'cr_cache'
+
+// Lee el cache de watchlist de localStorage. Estructura:
+//   { email, items, syncedAt }
+// Devuelve null si no hay o está corrupto (no lanza).
+const readCache = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const c = JSON.parse(raw)
+    if (!c || !Array.isArray(c.items)) return null
+    return c
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    // localStorage lleno o deshabilitado; el sync sigue funcionando en memoria.
+  }
+}
+
+const clearCache = () => {
+  try { localStorage.removeItem(CACHE_KEY) } catch {}
+}
+
+// Formatea syncedAt (epoch ms) como "hace Xm/h/d" o fecha corta si es viejo.
+const formatAgo = (ts) => {
+  if (!ts) return ''
+  const diff = Date.now() - ts
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min}m ago`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 7) return `${d}d ago`
+  return new Date(ts).toLocaleDateString()
+}
+
+const cache = readCache()
 
 export default {
   name: 'Crunchyroll',
   components: { Loader },
   data () {
     return {
-      email: localStorage.getItem('cr_email') || '',
+      email: (cache && cache.email) || localStorage.getItem('cr_email') || '',
       password: '',
-      items: [],
+      items: (cache && cache.items) || [],
       loading: false,
-      synced: false,
+      synced: !!cache,
+      syncedAt: (cache && cache.syncedAt) || null,
       error: '',
       filter: 'all',
+      resolving: null,
       FILTERS,
       STATUS_TEXT
     }
@@ -119,6 +184,9 @@ export default {
     filtered () {
       if (this.filter === 'all') return this.items
       return this.items.filter(it => it.status === this.filter)
+    },
+    syncedAgo () {
+      return formatAgo(this.syncedAt)
     }
   },
   methods: {
@@ -132,14 +200,58 @@ export default {
         })
         this.items = res.data.data || []
         this.synced = true
+        this.syncedAt = Date.now()
+        // Persistimos para no volver a pegarle a Crunchyroll en cada visita.
+        // La contraseña NUNCA se guarda: solo email + items + timestamp.
+        writeCache({ email: this.email, items: this.items, syncedAt: this.syncedAt })
         localStorage.setItem('cr_email', this.email)
-        this.$toast.success(`${this.items.length} series sincronizadas`)
+        this.$toast.success(`${this.items.length} series synced`)
       } catch (e) {
-        const msg = e.response?.data?.error || 'No se pudo sincronizar con Crunchyroll'
+        const msg = e.response?.data?.error || 'Could not sync with Crunchyroll'
         this.error = msg
       } finally {
         this.loading = false
       }
+    },
+    // Descarta el cache y el listado en memoria. El email se conserva para
+    // no tener que re-escribirlo en el próximo sync.
+    forgetCache () {
+      clearCache()
+      this.items = []
+      this.synced = false
+      this.syncedAt = null
+      this.filter = 'all'
+      this.error = ''
+    },
+    // Pre-puebla el alta de series con los datos del item de Crunchyroll +
+    // la resolución IMDB (ttId → imdb_url + poster). Si IMDB no resuelve,
+    // seguimos igual pero sin cover/imdb_url.
+    async addToSeries (it) {
+      this.resolving = it.name
+      let imdb = null
+      try {
+        const res = await api.get('/api/crunchyroll/resolve', {
+          params: { name: it.name, season: it.season }
+        })
+        imdb = res.data.data
+      } catch (e) {
+        // IMDB puede no encontrar el título; no bloqueamos el alta.
+      }
+      const seasonSuffix = it.season != null ? ` S${it.season}` : ''
+      const query = {
+        type: 'anime',
+        name: `${it.name}${seasonSuffix}`,
+        current_chapter: it.episode != null ? it.episode : 0
+      }
+      if (imdb) {
+        query.imdb_url = imdb.imdbUrl
+        if (imdb.poster) query.cover_url = imdb.poster
+      } else if (it.cr_poster) {
+        query.cover_url = it.cr_poster
+      }
+      if (it.cr_url) query.url = it.cr_url
+      this.resolving = null
+      this.$router.push({ path: '/series/new', query })
     }
   }
 }
@@ -208,6 +320,26 @@ export default {
   &:disabled
     opacity 0.6
     cursor not-allowed
+  .material-symbols-outlined
+    font-size 18px
+.cached
+  opacity 0.6
+  font-style italic
+.forget
+  display inline-flex
+  align-items center
+  gap 6px
+  background transparent
+  border 1px solid rgba(255,255,255,0.12)
+  color var(--foreground)
+  padding 9px 14px
+  border-radius 6px
+  cursor pointer
+  font-size 14px
+  &:hover
+    background rgba(255,255,255,0.08)
+    border-color var(--danger)
+    color var(--danger)
   .material-symbols-outlined
     font-size 18px
 .filters
@@ -281,6 +413,27 @@ export default {
       background rgba(255,255,255,0.05)
       color rgba(255,255,255,0.5)
       border-color rgba(255,255,255,0.1)
+  .actions
+    text-align right
+    .add-series
+      display inline-flex
+      align-items center
+      gap 4px
+      background transparent
+      border 1px solid rgba(255,255,255,0.12)
+      color var(--foreground)
+      padding 5px 10px
+      border-radius 6px
+      cursor pointer
+      font-size 12px
+      .material-symbols-outlined
+        font-size 16px
+      &:hover:not(:disabled)
+        background rgba(255,255,255,0.08)
+        border-color var(--primary)
+      &:disabled
+        opacity 0.5
+        cursor not-allowed
 .empty
   text-align center
   opacity 0.7

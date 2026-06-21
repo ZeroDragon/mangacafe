@@ -244,6 +244,15 @@ app.post('/api/crunchyroll/sync', [verifyToken, getUser], async (req, res) => {
   }
 })
 
+// Resuelve nombre + temporada a ttId/poster/imdbUrl de IMDB, para pre-poblar
+// el alta de series desde el listado de Crunchyroll. No requiere credenciales.
+app.get('/api/crunchyroll/resolve', [verifyToken, getUser], async (req, res) => {
+  const { name, season } = req.query
+  const result = await crunchyroll.resolveImdb(name, season)
+  if (result.error) return res.status(404).json({ error: result.error })
+  res.json({ data: result, token: res.newToken })
+})
+
 export { app }
 
 // Solo escucha cuando se ejecuta directamente (no al importarse en tests)
