@@ -211,6 +211,15 @@ app.post('/api/series/:id/items/:itemId/seen', [verifyToken, getUser, resolveUse
   res.json({ success: true, token: res.newToken })
 })
 
+// Desmarca un item (visto -> pendiente). Ownership check igual que markSeen.
+app.delete('/api/series/:id/items/:itemId/seen', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { data } = await series.getById(req.params.id, res.userId)
+  if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
+  const result = await seriesItem.markUnseen(req.params.itemId, res.userId)
+  if (result.error) return res.status(404).json({ error: 'Item not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
 // Marca todos los items pendientes de una serie como vistos.
 app.post('/api/series/:id/seen-all', [verifyToken, getUser, resolveUserId], async (req, res) => {
   const { data } = await series.getById(req.params.id, res.userId)

@@ -130,6 +130,27 @@ const markSeen = (itemId, userId) => {
   })
 }
 
+// Desmarca un item (visto -> pendiente). Mismo ownership check que markSeen.
+const markUnseen = (itemId, userId) => {
+  return new Promise(resolve => {
+    db.run(
+      `UPDATE series_items
+       SET seen = 0
+       WHERE id = ?
+         AND series_id IN (SELECT id FROM series WHERE user_id = ?)`,
+      [itemId, userId],
+      function (err) {
+        if (err) {
+          console.error(err)
+          return resolve({ error: err })
+        }
+        if (this.changes === 0) return resolve({ error: 'Item not found or not owned' })
+        resolve({ success: true })
+      }
+    )
+  })
+}
+
 // Marca como vistos todos los items de la serie con id <= itemId (o hasta la fecha upToDate).
 // upToDate: itemId del item límite (inclusive). Todos los anteriores (por pub_date/created_at) también se marcan.
 const markSeenUpTo = (seriesId, itemId) => {
@@ -198,6 +219,7 @@ export default {
   pendingByUser,
   dashboardByUser,
   markSeen,
+  markUnseen,
   markSeenUpTo,
   markAllSeen,
   listBySeries

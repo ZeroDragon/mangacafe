@@ -109,6 +109,29 @@ log('POST item seen sobre item inexistente -> 404')
 const missItem = await request('post', `/api/series/${s1.id}/items/99999999/seen`, null, tokenA)
 if (missItem.status !== 404) fail(`esperaba 404 item inexistente, vino ${missItem.status}`)
 
+// --- DELETE /api/series/:id/items/:itemId/seen (desmarcar) ---
+log('DELETE item seen: desmarcar el 101 (visto -> pendiente)')
+const unSeen = await request('delete', `/api/series/${s1.id}/items/${item101.id}/seen`, null, tokenA)
+if (unSeen.status !== 200) fail(`status ${unSeen.status}`)
+
+log('Verificar que vuelve a estar en ?pending=1')
+const pendAfterUnseen = await request('get', `/api/series/${s1.id}/feed?pending=1`, null, tokenA)
+if (pendAfterUnseen.data.data.length !== 3) fail(`esperaba 3 pendientes tras desmarcar (101 + 102 + 103), hay ${pendAfterUnseen.data.data.length}`)
+if (!pendAfterUnseen.data.data.some(i => i.id === item101.id)) fail('el item desmarcado no vuelve como pendiente')
+log('  desmarcar item OK')
+
+log('DELETE item seen sobre item ajeno (de B) -> 404')
+const stealUnseen = await request('delete', `/api/series/${sB.id}/items/${bItem.id}/seen`, null, tokenA)
+if (stealUnseen.status !== 404) fail(`esperaba 404 desmarcar item ajeno, vino ${stealUnseen.status}`)
+
+log('DELETE item seen sobre item inexistente -> 404')
+const missUnseen = await request('delete', `/api/series/${s1.id}/items/99999999/seen`, null, tokenA)
+if (missUnseen.status !== 404) fail(`esperaba 404 desmarcar item inexistente, vino ${missUnseen.status}`)
+log('  ownership + 404 desmarcar OK')
+
+// Restaurar estado: remarcar el 101 como visto para que el seen-all siguiente vea 2 pendientes
+await request('post', `/api/series/${s1.id}/items/${item101.id}/seen`, null, tokenA)
+
 // --- POST /api/series/:id/seen-all ---
 log('POST seen-all: marca los 2 pendientes restantes')
 const allSeen = await request('post', `/api/series/${s1.id}/seen-all`, null, tokenA)

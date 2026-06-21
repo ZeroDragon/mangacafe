@@ -63,10 +63,13 @@ Loader(v-if="!loaded" text="Loading series…")
             span.material-symbols-outlined open_in_new
           button.icon-btn(
             v-if="!it.seen"
-            @click="markItem(it)"
+            @click="toggleItem(it)"
             title="Mark as seen")
             span.material-symbols-outlined check
-          span.done(v-else title="Seen")
+          button.icon-btn.done(
+            v-else
+            @click="toggleItem(it)"
+            title="Mark as pending")
             span.material-symbols-outlined check_circle
 </template>
 
@@ -119,13 +122,20 @@ export default {
     itemLink (it) {
       return it.link || (this.series && this.series.url) || ''
     },
-    async markItem (it) {
+    async toggleItem (it) {
+      const id = this.$route.params.id
       try {
-        await api.post(`/api/series/${this.$route.params.id}/items/${it.id}/seen`)
-        it.seen = 1
-        this.$toast.success('Marked as seen')
+        if (it.seen) {
+          await api.delete(`/api/series/${id}/items/${it.id}/seen`)
+          it.seen = 0
+          this.$toast.success('Marked as pending')
+        } else {
+          await api.post(`/api/series/${id}/items/${it.id}/seen`)
+          it.seen = 1
+          this.$toast.success('Marked as seen')
+        }
       } catch (e) {
-        this.$toast.error('Could not mark the item')
+        this.$toast.error('Could not update the item')
       }
     },
     async seenAll () {
@@ -354,6 +364,8 @@ export default {
 .done
   color var(--primary)
   opacity 0.6
+  &:hover
+    opacity 1
   .material-symbols-outlined
     font-size 20px
 .error
