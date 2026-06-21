@@ -6,6 +6,7 @@ import series from './models/series.mjs'
 import seriesItem from './models/series_item.mjs'
 import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
+import * as crunchyroll from './crunchyroll.mjs'
 
 const app = express()
 const PORT = process.env.PORT
@@ -227,6 +228,16 @@ app.post('/api/series/:id/seen-all', [verifyToken, getUser, resolveUserId], asyn
   const result = await seriesItem.markAllSeen(req.params.id, res.userId)
   if (result.error) return res.status(500).json({ error: result.error })
   res.json({ success: true, updated: result.updated, token: res.newToken })
+})
+
+// --- Crunchyroll (sync externo, on-demand) ---
+// El usuario pasa sus credenciales de Crunchyroll; no se persisten.
+// Devuelve su watchlist normalizada (serie + último episodio visto / estado).
+app.post('/api/crunchyroll/sync', [verifyToken, getUser], async (req, res) => {
+  const { email, password } = req.body || {}
+  const result = await crunchyroll.getWatchlist(email, password)
+  if (result.error) return res.status(502).json({ error: result.error })
+  res.json({ data: result.data, token: res.newToken })
 })
 
 export { app }

@@ -10,6 +10,9 @@ header.app-header
     router-link(:to="{ path: '/series' }")
       span.material-symbols-outlined library_books
       span.label Series
+    router-link(:to="{ path: '/crunchyroll' }")
+      span.material-symbols-outlined sync
+      span.label Crunchyroll
   .spacer
   button.add(@click="$router.push('/series/new')")
     span.material-symbols-outlined add

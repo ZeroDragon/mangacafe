@@ -6,6 +6,7 @@ const routes = [
   { path: '/login', component: Login, meta: { public: true } },
   { path: '/dashboard', component: () => import('./components/Dashboard.vue') },
   { path: '/series', component: () => import('./components/SeriesList.vue') },
+  { path: '/crunchyroll', component: () => import('./components/Crunchyroll.vue') },
   { path: '/series/new', component: () => import('./components/SeriesForm.vue') },
   { path: '/series/:id', component: () => import('./components/SeriesDetail.vue') },
   { path: '/series/:id/edit', component: () => import('./components/SeriesForm.vue') }
