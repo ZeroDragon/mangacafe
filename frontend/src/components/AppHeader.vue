@@ -13,13 +13,13 @@ header.app-header
   .spacer
   button.add(@click="$router.push('/series/new')")
     span.material-symbols-outlined add
-    span.label Nueva
+    span.label New
   .user(v-if="username")
     span.material-symbols-outlined.icon person
     span.name {{ username }}
     button.logout(@click="logout")
       span.material-symbols-outlined.icon logout
-      span.label Salir
+      span.label Logout
 </template>
 
 <script>

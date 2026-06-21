@@ -3,21 +3,21 @@
   h1 Manga Café
   .card
     .tabs
-      button(:class="{ active: mode === 'login' }" @click="setMode('login')") Iniciar sesión
-      button(:class="{ active: mode === 'signup' }" @click="setMode('signup')") Crear cuenta
+      button(:class="{ active: mode === 'login' }" @click="setMode('login')") Sign in
+      button(:class="{ active: mode === 'signup' }" @click="setMode('signup')") Create account
     form(@submit.prevent="submit")
       label
-        span Usuario
+        span Username
         input(v-model="username" type="text" autocomplete="username" required)
       label
-        span Contraseña
+        span Password
         input(
           v-model="password"
           type="password"
           :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
           required)
       button(type="submit" :disabled="loading")
-        | {{ mode === 'login' ? 'Entrar' : 'Registrarse' }}
+        | {{ mode === 'login' ? 'Sign in' : 'Sign up' }}
       p.error(v-if="error") {{ error }}
 </template>
 
@@ -60,7 +60,7 @@ export default {
         })
         this.$router.push('/dashboard')
       } catch (e) {
-        this.error = (e.response && e.response.data && e.response.data.error) || 'Error inesperado'
+        this.error = (e.response && e.response.data && e.response.data.error) || 'Unexpected error'
       } finally {
         this.loading = false
       }

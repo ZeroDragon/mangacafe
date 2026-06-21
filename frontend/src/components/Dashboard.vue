@@ -4,20 +4,20 @@
     .title
       h1 Dashboard
       .summary(v-if="!loading && !error")
-        span {{ summary.totalPending }} capítulo(s) pendiente(s)
+        span {{ summary.totalPending }} chapter(s) pending
         span.dot ·
-        span {{ summary.withUpdates }} serie(s) con novedades
+        span {{ summary.withUpdates }} series with updates
     .controls
       .search
         span.material-symbols-outlined search
         input(
           v-model="search"
           type="search"
-          placeholder="Buscar por nombre…"
-          aria-label="Buscar series por nombre")
+          placeholder="Search by name…"
+          aria-label="Search series by name")
       button.refresh(@click="refreshAll" :disabled="refreshing")
         span.material-symbols-outlined {{ refreshing ? 'progress_activity' : 'sync' }}
-        span.label {{ refreshing ? 'Refrescando…' : 'Refrescar' }}
+        span.label {{ refreshing ? 'Refreshing…' : 'Refresh' }}
 
   .filters(v-if="!loading && items.length")
     button(
@@ -32,16 +32,16 @@
   Loader(v-if="loading" skeleton)
   .empty(v-else-if="!items.length")
     span.material-symbols-outlined library_books
-    p Aún no tenés series, agregá una.
-    router-link.cta(:to="{ path: '/series/new' }") Crear serie
+    p You don't have any series yet, add one.
+    router-link.cta(:to="{ path: '/series/new' }") Create series
   .empty(v-else-if="!summary.totalPending && filter === 'all' && !search")
     span.material-symbols-outlined check_circle
-    p ¡Estás al día! No tenés capítulos pendientes.
-    router-link.cta(:to="{ path: '/series' }") Ver mis series
+    p You're all caught up! No pending chapters.
+    router-link.cta(:to="{ path: '/series' }") View my series
   .empty.filtered(v-else-if="!filtered.length")
     span.material-symbols-outlined search_off
-    p Ninguna serie coincide con el filtro.
-    button.reset(@click="resetFilters") Limpiar filtros
+    p No series match the filter.
+    button.reset(@click="resetFilters") Clear filters
   .grid(v-else)
     article.card(
       v-for="s in filtered"
@@ -60,17 +60,17 @@
         .top
           span.type-badge(:class="s.type") {{ s.type === 'anime' ? 'Anime' : 'Manga' }}
           span.badge.pending(v-if="s.pending > 0") {{ s.pending }}
-          span.badge.error(v-else-if="s.last_error" title="Error de feed")
+          span.badge.error(v-else-if="s.last_error" title="Feed error")
             span.material-symbols-outlined error
         h3.name
           router-link(:to="{ path: `/series/${s.id}` }") {{ s.name }}
-        .chapter(v-if="s.pending > 0") Último: {{ s.last_item_title || '—' }}
-        .chapter(v-else) Cap. actual: {{ s.current_chapter }}
+        .chapter(v-if="s.pending > 0") Latest: {{ s.last_item_title || '—' }}
+        .chapter(v-else) Current ch.: {{ s.current_chapter }}
         .error-msg(v-if="s.last_error" :title="s.last_error") Feed: {{ s.last_error }}
         .actions
-          router-link.btn.icon-only(:to="{ path: `/series/${s.id}` }" title="Abrir")
+          router-link.btn.icon-only(:to="{ path: `/series/${s.id}` }" title="Open")
             span.material-symbols-outlined open_in_new
-          button.btn.icon-only(@click="markSeen(s)" :disabled="s.pending === 0" title="Marcar todo visto")
+          button.btn.icon-only(@click="markSeen(s)" :disabled="s.pending === 0" title="Mark all as seen")
             span.material-symbols-outlined done_all
 </template>
 
@@ -79,11 +79,11 @@ import api from '../api.js'
 import Loader from './Loader.vue'
 
 const FILTERS = [
-  { key: 'all', label: 'Todos' },
+  { key: 'all', label: 'All' },
   { key: 'manga', label: 'Manga' },
   { key: 'anime', label: 'Anime' },
-  { key: 'pending', label: 'Con pendientes' },
-  { key: 'error', label: 'Con error' }
+  { key: 'pending', label: 'With pending' },
+  { key: 'error', label: 'With errors' }
 ]
 
 export default {
@@ -126,7 +126,7 @@ export default {
         this.items = res.data.data || []
         this.summary = res.data.summary || this.summary
       } catch (e) {
-        this.error = 'No se pudo cargar el dashboard'
+        this.error = 'Could not load the dashboard'
       } finally {
         this.loading = false
       }
@@ -136,9 +136,9 @@ export default {
       try {
         await api.post('/api/refresh')
         await this.fetch()
-        this.$toast.success('Feeds refrescados')
+        this.$toast.success('Feeds refreshed')
       } catch (e) {
-        this.$toast.error('No se pudo refrescar')
+        this.$toast.error('Could not refresh')
       } finally {
         this.refreshing = false
       }
@@ -148,9 +148,9 @@ export default {
         const res = await api.post(`/api/series/${s.id}/seen-all`)
         await this.fetch()
         const n = res.data.updated || 0
-        if (n > 0) this.$toast.success(`${n} capítulo(s) marcado(s) como visto en "${s.name}"`)
+        if (n > 0) this.$toast.success(`${n} chapter(s) marked as seen in "${s.name}"`)
       } catch (e) {
-        this.$toast.error('No se pudo marcar')
+        this.$toast.error('Could not mark')
       }
     },
     resetFilters () {

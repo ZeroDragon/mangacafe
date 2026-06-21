@@ -1,18 +1,17 @@
 <template lang="pug">
 .series-list
   header.bar
-    h1 Tus series
+    h1 Your series
     button.add(@click="$router.push('/series/new')")
       span.material-symbols-outlined add
-      span Nueva
-  p.error(v-if="error") {{ error }}
+      span New
   Loader(v-if="loading" skeleton)
   .empty(v-else-if="!series.length")
     span.material-symbols-outlined library_books
-    p Aún no tenés series, agregá una.
+    p You don't have any series yet, add one.
     button.add(@click="$router.push('/series/new')")
       span.material-symbols-outlined add
-      span Crear serie
+      span Create series
   .grid(v-else)
     SeriesCard(
       v-for="s in series"
@@ -48,7 +47,7 @@ export default {
         const res = await api.get('/api/series')
         this.series = res.data.data || []
       } catch (e) {
-        this.error = 'No se pudieron cargar tus series'
+        this.error = 'Could not load your series'
       } finally {
         this.loading = false
       }
@@ -57,13 +56,13 @@ export default {
       this.$router.push(`/series/${series.id}/edit`)
     },
     async onDelete (series) {
-      if (!confirm(`¿Eliminar "${series.name}"? Se borrarán también sus items.`)) return
+      if (!confirm(`Delete "${series.name}"? Its items will also be deleted.`)) return
       try {
         await api.delete(`/api/series/${series.id}`)
         this.series = this.series.filter(s => s.id !== series.id)
-        this.$toast.success(`Serie "${series.name}" eliminada`)
+        this.$toast.success(`Series "${series.name}" deleted`)
       } catch (e) {
-        this.$toast.error((e.response && e.response.data && e.response.data.error) || 'No se pudo eliminar')
+        this.$toast.error((e.response && e.response.data && e.response.data.error) || 'Could not delete')
       }
     }
   }

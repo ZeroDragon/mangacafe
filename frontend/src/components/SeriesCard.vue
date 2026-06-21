@@ -12,13 +12,13 @@
   .body
     .top
       span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
-      span.pending(v-if="series.pending > 0") {{ series.pending }} pendiente(s)
+      span.pending(v-if="series.pending > 0") {{ series.pending }} pending
     h3.name {{ series.name }}
-    .chapter Cap. actual: {{ series.current_chapter }}
+    .chapter Current ch.: {{ series.current_chapter }}
     .actions
-      button.btn.icon-only(@click="$emit('edit', series)" title="Editar")
+      button.btn.icon-only(@click="$emit('edit', series)" title="Edit")
         span.material-symbols-outlined edit
-      button.btn.icon-only.danger(@click="$emit('delete', series)" title="Eliminar")
+      button.btn.icon-only.danger(@click="$emit('delete', series)" title="Delete")
         span.material-symbols-outlined delete
 </template>
 

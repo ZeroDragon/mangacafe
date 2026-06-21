@@ -1,7 +1,7 @@
 {
   "name": "Manga Café",
   "short_name": "Manga Café",
-  "description": "Tracker personal de lectura de mangas y episodios de anime vistos.",
+  "description": "Personal tracker for manga reading and anime episodes watched.",
   "start_url": "/dashboard",
   "scope": "/",
   "icons": [
