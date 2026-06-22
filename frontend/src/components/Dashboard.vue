@@ -41,9 +41,7 @@
       SeriesCard(
         v-for="s in filtered"
         :key="s.id"
-        :series="s"
-        :show-mark-seen="true"
-        @mark-seen="markSeen")
+        :series="s")
     .empty.filtered(v-else-if="filter === 'pending' && !search")
       span.material-symbols-outlined check_circle
       p You're all caught up! No pending chapters.
@@ -60,9 +58,7 @@
         SeriesCard(
           v-for="s in errorItems"
           :key="s.id"
-          :series="s"
-          :show-mark-seen="true"
-          @mark-seen="markSeen")
+          :series="s")
 </template>
 
 <script>
@@ -136,16 +132,6 @@ export default {
         this.$toast.error('Could not refresh')
       } finally {
         this.refreshing = false
-      }
-    },
-    async markSeen (s) {
-      try {
-        const res = await api.post(`/api/series/${s.id}/seen-all`)
-        await this.fetch()
-        const n = res.data.updated || 0
-        if (n > 0) this.$toast.success(`${n} chapter(s) marked as seen in "${s.name}"`)
-      } catch (e) {
-        this.$toast.error('Could not mark')
       }
     },
     resetFilters () {

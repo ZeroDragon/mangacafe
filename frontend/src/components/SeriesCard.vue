@@ -24,12 +24,6 @@ article.card(:class="{ error: series.last_error }")
       router-link.btn.icon-only(:to="{ path: `/series/${series.id}` }" title="Open")
         span.material-symbols-outlined open_in_new
       button.btn.icon-only(
-        v-if="showMarkSeen"
-        @click="$emit('mark-seen', series)"
-        :disabled="series.pending === 0"
-        title="Mark all as seen")
-        span.material-symbols-outlined done_all
-      button.btn.icon-only(
         v-if="showEdit"
         @click="$emit('edit', series)"
         title="Edit")
@@ -46,10 +40,9 @@ export default {
   name: 'SeriesCard',
   props: {
     series: { type: Object, required: true },
-    showEdit: { type: Boolean, default: false },
-    showMarkSeen: { type: Boolean, default: false }
+    showEdit: { type: Boolean, default: false }
   },
-  emits: ['edit', 'delete', 'mark-seen'],
+  emits: ['edit', 'delete'],
   methods: {
     onCoverError (e) {
       // Oculta el img roto y deja el placeholder (no console spam)
