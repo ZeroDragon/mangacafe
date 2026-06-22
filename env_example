@@ -8,3 +8,4 @@ IMDB_GRAPHQL_ENDPOINT "override the IMDB GraphQL endpoint (default https://api.g
 IMDB_TZ "timezone used to decide if an episode already aired (default: system tz, e.g. America/Mexico_City)"
 RSS_USER_AGENT "User-Agent for RSS/Atom feed fetches (e.g. MangaCafeRSS/1.0)"
 RSS_TIMEOUT "ms for RSS HTTP requests (e.g. 15000)"
+BUILD_OUT_DIR "where vite writes the frontend build (e.g. dist for dev, /srv/www/mangacafe.vip for prod served by nginx)"

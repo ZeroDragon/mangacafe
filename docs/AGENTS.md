@@ -1,6 +1,6 @@
 # Manga Café — Contexto para agentes IA
 
-> **Leé este archivo primero.** Es el punto de entrada para retomar el desarrollo en cualquier sesión. Después continuá con `PROJECT.md`, `ARCHITECTURE.md` y el estado de las épicas en `epics/`.
+> **Lee este archivo primero.** Es el punto de entrada para retomar el desarrollo en cualquier sesión. Después continúa con `PROJECT.md`, `ARCHITECTURE.md` y el estado de las épicas en `epics/`.
 
 ---
 
@@ -59,6 +59,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 9. **Testear después de cada cambio:** backend `npm start` desde `backend/`; frontend `npm run build` o `npm run dev` desde `frontend/`. Hay un `.env` temporal en el root (gitignored) para dev local.
 10. **Commits:** solo cuando el usuario lo pida explícitamente.
 11. **Atribuciones en commits:** **NUNCA** agregar líneas de atribución tipo `💘 Generated with Crush`, `Assisted-by: ... via Crush <crush@charm.land>`, ni ninguna firma/co-authored-by de la herramienta o del modelo. El mensaje debe contener solo el subject + body del cambio. Si se reescribe historial, omitir las atribuciones existentes.
+12. **Idioma:** comunicación con el usuario en **español mexicano** (tú, no vos). Sin voseo en conjugación ni acentos (p. ej. "lee", "mira", "prueba"; no "leé", "mirá", "probá"). Los comentarios y strings de código pueden ir en español neutro o en inglés según el archivo.
 
 ---
 
@@ -124,4 +125,4 @@ docs/
 - **Completada:** Épica 0 (limpieza del scaffolding). Backend arranca, `signup`/`login` funcionan, `vite build` compila.
 - **Próxima sugerida:** Épica 1 (modelo de datos: tablas `series` y `series_items`) o Épica 2 (auth con bcrypt). Recomendado hacer **Épica 1 primero** porque fija el contrato de datos.
 
-Leé `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una.
+Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una.
