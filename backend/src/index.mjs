@@ -7,6 +7,7 @@ import seriesItem from './models/series_item.mjs'
 import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
 import * as crunchyroll from './crunchyroll.mjs'
+import { ready as dbReady } from './models/db.mjs'
 
 const app = express()
 const PORT = process.env.PORT
@@ -291,8 +292,13 @@ export { app }
 // Solo escucha cuando se ejecuta directamente (no al importarse en tests)
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
-  // Scheduler IMDB: refresh al boot + cada 6h (Épica 4, decisión 5)
-  refresher.startScheduler({ runImmediately: true })
+  // Espera a que el schema esté listo antes de arrancar el scheduler y el listen,
+  // para evitar el race condition donde refreshAll (runImmediately: true) corre
+  // antes de que las tablas existan (fallaba con "no such table: series").
+  dbReady.finally(() => {
+    // Scheduler IMDB: refresh al boot + cada 6h (Épica 4, decisión 5)
+    refresher.startScheduler({ runImmediately: true })
+  })
   const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT} (pid ${process.pid})`)
   })
