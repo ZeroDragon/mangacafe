@@ -35,9 +35,6 @@ Loader(v-if="!loaded" text="Loading series…")
         button.btn(@click="refresh" :disabled="refreshing")
           span.material-symbols-outlined {{ refreshing ? 'progress_activity' : 'sync' }}
           span {{ refreshing ? 'Refreshing…' : `Refresh ${feedLabel}` }}
-        button.btn.all(@click="seenAll" :disabled="!pendingItems.length")
-          span.material-symbols-outlined done_all
-          span Mark all as seen
         router-link.btn.edit(:to="{ path: `/series/${series.id}/edit` }")
           span.material-symbols-outlined edit
           span Edit
@@ -145,17 +142,6 @@ export default {
         }
       } catch (e) {
         this.$toast.error('Could not update the item')
-      }
-    },
-    async seenAll () {
-      try {
-        const res = await api.post(`/api/series/${this.$route.params.id}/seen-all`)
-        await this.loadFeed()
-        const n = res.data.updated || 0
-        if (n > 0) this.$toast.success(`${n} chapter(s) marked as seen`)
-        else this.$toast.info('No pending items')
-      } catch (e) {
-        this.$toast.error('Could not mark all')
       }
     },
     async refresh () {
