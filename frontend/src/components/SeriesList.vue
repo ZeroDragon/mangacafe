@@ -16,10 +16,7 @@
     SeriesCard(
       v-for="s in series"
       :key="s.id"
-      :series="s"
-      :show-edit="true"
-      @edit="onEdit"
-      @delete="onDelete")
+      :series="s")
 </template>
 
 <script>
@@ -51,19 +48,6 @@ export default {
         this.error = 'Could not load your series'
       } finally {
         this.loading = false
-      }
-    },
-    onEdit (series) {
-      this.$router.push(`/series/${series.id}/edit`)
-    },
-    async onDelete (series) {
-      if (!confirm(`Delete "${series.name}"? Its items will also be deleted.`)) return
-      try {
-        await api.delete(`/api/series/${series.id}`)
-        this.series = this.series.filter(s => s.id !== series.id)
-        this.$toast.success(`Series "${series.name}" deleted`)
-      } catch (e) {
-        this.$toast.error((e.response && e.response.data && e.response.data.error) || 'Could not delete')
       }
     }
   }

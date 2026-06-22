@@ -22,7 +22,7 @@ Loader(v-if="!loaded" text="Loading series…")
       .meta(v-if="series.url")
         a.outside(:href="series.url" target="_blank" rel="noopener")
           span.material-symbols-outlined open_in_new
-          span Open where I read/watch it
+          span Go to show
       .feed-status(v-if="feedUrl")
         span.material-symbols-outlined {{ series.type === 'anime' ? 'movie' : 'newspaper' }}
         span(v-if="series.last_error" class="feed-error" :title="series.last_error") {{ feedLabel }} error: {{ series.last_error }}
@@ -281,11 +281,20 @@ export default {
 .outside
   display inline-flex
   align-items center
-  gap 4px
-  color var(--primary)
+  gap 6px
+  background var(--primary)
+  color #fff
   text-decoration none
+  font-weight 500
+  font-size 14px
+  padding 8px 14px
+  border-radius 6px
+  margin-top 4px
+  transition background 0.15s ease
+  .material-symbols-outlined
+    font-size 18px
   &:hover
-    text-decoration underline
+    background lighten(#2b5278, 12%)
 .actions
   display flex
   gap 8px
