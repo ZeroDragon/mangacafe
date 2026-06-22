@@ -1,5 +1,4 @@
 import express from 'express'
-import { fileURLToPath } from 'url'
 import '../../dotenv.mjs'
 import user from './models/user.mjs'
 import series from './models/series.mjs'
@@ -289,12 +288,15 @@ app.get('/api/crunchyroll/resolve', [verifyToken, getUser], async (req, res) => 
 
 export { app }
 
-// Solo escucha cuando se ejecuta directamente (no al importarse en tests)
-const isMain = process.argv[1] === fileURLToPath(import.meta.url)
-if (isMain) {
-  // Espera a que el schema esté listo antes de arrancar el scheduler y el listen,
-  // para evitar el race condition donde refreshAll (runImmediately: true) corre
-  // antes de que las tablas existan (fallaba con "no such table: series").
+// PM2 en fork mode envuelve el script y cambia process.argv[1], rompiendo el
+// check clásico process.argv[1] === import.meta.url. En su lugar, no servimos
+// cuando el entry point es un smoke test (estos importan { app } y levantan su
+// propio servidor en puerto efímero).
+const shouldServe = !(process.argv[1] || '').includes('tests/')
+if (shouldServe) {
+  // Espera a que el schema esté listo antes de arrancar el scheduler, para
+  // evitar el race condition donde refreshAll corre antes de que las tablas
+  // existan (fallaba con "no such table: series").
   dbReady.finally(() => {
     // Scheduler IMDB: refresh al boot + cada 6h (Épica 4, decisión 5)
     refresher.startScheduler({ runImmediately: true })
