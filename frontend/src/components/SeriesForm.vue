@@ -24,7 +24,7 @@
       input(v-model="form.cover_url" type="url" placeholder="https://...")
     label
       span Current chapter
-      input(v-model.number="form.current_chapter" type="number" min="0" step="1")
+      .hint Progress is tracked automatically as you mark chapters seen.
     label(v-if="form.type === 'anime'")
       span IMDB episodes URL (optional)
       input(v-model="form.imdb_url" type="url" placeholder="https://www.imdb.com/title/tt.../episodes/?season=2")
@@ -49,7 +49,6 @@ export default {
         name: '',
         url: '',
         cover_url: '',
-        current_chapter: 0,
         imdb_url: '',
         rss_url: ''
       },
@@ -88,9 +87,6 @@ export default {
       if (typeof q.cover_url === 'string' && q.cover_url) this.form.cover_url = q.cover_url
       if (typeof q.imdb_url === 'string' && q.imdb_url) this.form.imdb_url = q.imdb_url
       if (typeof q.rss_url === 'string' && q.rss_url) this.form.rss_url = q.rss_url
-      if (q.current_chapter !== undefined && q.current_chapter !== null && q.current_chapter !== '') {
-        this.form.current_chapter = Number(q.current_chapter) || 0
-      }
     },
     async load () {
       try {
@@ -101,7 +97,6 @@ export default {
           name: s.name,
           url: s.url || '',
           cover_url: s.cover_url || '',
-          current_chapter: s.current_chapter,
           imdb_url: s.imdb_url || '',
           rss_url: s.rss_url || ''
         }
@@ -112,9 +107,6 @@ export default {
     validate () {
       const errs = []
       if (!this.form.name.trim()) errs.push('Name is required')
-      if (this.form.current_chapter === '' || this.form.current_chapter === null || Number(this.form.current_chapter) < 0) {
-        errs.push('Current chapter must be >= 0')
-      }
       const urlFields = ['url', 'cover_url']
       if (this.form.type === 'anime') urlFields.push('imdb_url')
       else urlFields.push('rss_url')
@@ -138,7 +130,6 @@ export default {
         name: this.form.name.trim(),
         url: this.form.url.trim() || null,
         cover_url: this.form.cover_url.trim() || null,
-        current_chapter: Number(this.form.current_chapter) || 0,
         imdb_url: isAnime ? (this.form.imdb_url.trim() || null) : null,
         rss_url: isAnime ? null : (this.form.rss_url.trim() || null)
       }
@@ -182,6 +173,10 @@ label
   gap 4px
   font-size 13px
   opacity 0.85
+.hint
+  font-size 11px
+  opacity 0.6
+  font-style italic
 input
   background rgba(0,0,0,0.25)
   border 1px solid rgba(255,255,255,0.1)

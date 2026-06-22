@@ -1,5 +1,39 @@
 import db from './db.mjs'
 
+// Recalcula series.last_read a partir del item visto más reciente
+// (mismo orden que el feed: pub_date DESC, created_at DESC, id DESC).
+// NULL si no hay ninguno visto ("No data" en la UI). Se llama al final
+// de cada mutación de seen para mantener el indicador siempre al día.
+const recomputeLastRead = (seriesId) => {
+  return new Promise(resolve => {
+    db.get(
+      `SELECT title FROM series_items
+       WHERE series_id = ? AND seen = 1
+       ORDER BY pub_date DESC, created_at DESC, id DESC
+       LIMIT 1`,
+      [seriesId],
+      (err, row) => {
+        if (err) {
+          console.error(err)
+          return resolve({ error: err })
+        }
+        const lastRead = row ? row.title : null
+        db.run(
+          `UPDATE series SET last_read = ?, updated_at = strftime('%s', 'now') WHERE id = ?`,
+          [lastRead, seriesId],
+          (err) => {
+            if (err) {
+              console.error(err)
+              return resolve({ error: err })
+            }
+            resolve({ last_read: lastRead })
+          }
+        )
+      }
+    )
+  })
+}
+
 // items: [{ guid, title, link, pub_date }]
 // Inserta todos, ignorando duplicados de (series_id, guid). Devuelve cuántos insertó.
 const insertMany = (seriesId, items) => {
@@ -50,7 +84,7 @@ const pendingCount = (seriesId) => {
 const pendingByUser = (userId) => {
   return new Promise(resolve => {
     db.all(
-      `SELECT s.id AS series_id, s.name, s.type, s.cover_url, s.current_chapter,
+      `SELECT s.id AS series_id, s.name, s.type, s.cover_url, s.last_read,
               s.last_error, s.last_checked_at,
               COALESCE(si.pending, 0) AS pending
        FROM series s
@@ -112,10 +146,11 @@ const dashboardByUser = (userId) => {
 // Marca un item como visto y, en cascada, todos los anteriores (pub_date menor
 // o igual → capítulos/episodios previos). Tiene sentido: si llegaste hasta el
 // capítulo N, los N-1 .. 1 ya están leídos. Valida ownership vía JOIN con series.
+// Tras mutar seen, recalcula series.last_read (Épica 10).
 const markSeen = (itemId, userId) => {
   return new Promise(resolve => {
     db.get(
-      `SELECT i.id FROM series_items i
+      `SELECT i.id, i.series_id FROM series_items i
        JOIN series s ON s.id = i.series_id
        WHERE i.id = ? AND s.user_id = ?`,
       [itemId, userId],
@@ -128,19 +163,20 @@ const markSeen = (itemId, userId) => {
         db.run(
           `UPDATE series_items
            SET seen = 1
-           WHERE series_id = (SELECT series_id FROM series_items WHERE id = ?)
+           WHERE series_id = ?
              AND series_id IN (SELECT id FROM series WHERE user_id = ?)
              AND seen = 0
              AND (COALESCE(pub_date, 0), created_at, id) <= (
                SELECT COALESCE(pub_date, 0), created_at, id
                FROM series_items WHERE id = ?
              )`,
-          [itemId, userId, itemId],
-          function (err) {
+          [row.series_id, userId, itemId],
+          async function (err) {
             if (err) {
               console.error(err)
               return resolve({ error: err })
             }
+            await recomputeLastRead(row.series_id)
             resolve({ success: true, updated: this.changes })
           }
         )
@@ -152,11 +188,11 @@ const markSeen = (itemId, userId) => {
 // Desmarca un item (visto -> pendiente) y, en cascada, todos los posteriores
 // (pub_date mayor o igual → capítulos/episodios siguientes). Tiene sentido: si
 // marcás el capítulo N como no leído, no pueden estar leídos los N+1 .. M.
-// Mismo ownership check que markSeen.
+// Mismo ownership check que markSeen. Tras mutar seen, recalcula series.last_read.
 const markUnseen = (itemId, userId) => {
   return new Promise(resolve => {
     db.get(
-      `SELECT i.id FROM series_items i
+      `SELECT i.id, i.series_id FROM series_items i
        JOIN series s ON s.id = i.series_id
        WHERE i.id = ? AND s.user_id = ?`,
       [itemId, userId],
@@ -169,19 +205,20 @@ const markUnseen = (itemId, userId) => {
         db.run(
           `UPDATE series_items
            SET seen = 0
-           WHERE series_id = (SELECT series_id FROM series_items WHERE id = ?)
+           WHERE series_id = ?
              AND series_id IN (SELECT id FROM series WHERE user_id = ?)
              AND seen = 1
              AND (COALESCE(pub_date, 0), created_at, id) >= (
                SELECT COALESCE(pub_date, 0), created_at, id
                FROM series_items WHERE id = ?
              )`,
-          [itemId, userId, itemId],
-          function (err) {
+          [row.series_id, userId, itemId],
+          async function (err) {
             if (err) {
               console.error(err)
               return resolve({ error: err })
             }
+            await recomputeLastRead(row.series_id)
             resolve({ success: true, updated: this.changes })
           }
         )
@@ -223,11 +260,12 @@ const markSeenUpTo = (seriesId, itemId) => {
            SELECT created_at, id FROM series_items WHERE id = ? AND series_id = ?
          )`,
       [seriesId, itemId, seriesId],
-      function (err) {
+      async function (err) {
         if (err) {
           console.error(err)
           return resolve({ error: err })
         }
+        await recomputeLastRead(seriesId)
         resolve({ success: true, updated: this.changes })
       }
     )
@@ -252,6 +290,7 @@ const listBySeries = (seriesId, { onlyPending = false } = {}) => {
 }
 
 // Marca como vistos todos los items pendientes de una serie (ownership check).
+// Tras mutar seen, recalcula series.last_read.
 const markAllSeen = (seriesId, userId) => {
   return new Promise(resolve => {
     db.run(
@@ -261,11 +300,12 @@ const markAllSeen = (seriesId, userId) => {
          AND seen = 0
          AND series_id IN (SELECT id FROM series WHERE user_id = ?)`,
       [seriesId, userId],
-      function (err) {
+      async function (err) {
         if (err) {
           console.error(err)
           return resolve({ error: err })
         }
+        await recomputeLastRead(seriesId)
         resolve({ success: true, updated: this.changes })
       }
     )
@@ -277,6 +317,7 @@ export default {
   pendingCount,
   pendingByUser,
   dashboardByUser,
+  recomputeLastRead,
   markSeen,
   markUnseen,
   markSeenUpTo,

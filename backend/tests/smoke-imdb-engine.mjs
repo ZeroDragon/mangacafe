@@ -198,7 +198,7 @@ log(`Usuario ${username} id=${u.id}`)
 // Serie anime con URL IMDB válida (3 episodios)
 const c1 = await series.create(u.id, {
   type: 'anime', name: 'Test IMDB', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: imdbURL('tt111', 1)
+  imdb_url: imdbURL('tt111', 1)
 })
 const sid1 = c1.id
 log(`Serie anime creada id=${sid1} con imdb_url válido`)
@@ -241,7 +241,7 @@ log(`  purga de futuros OK (4 -> ${pendAfterPurge.data})`)
 log('refreshSeries serie SIN imdb_url -> skipped')
 const c2 = await series.create(u.id, {
   type: 'manga', name: 'No IMDB', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: null
+  imdb_url: null
 })
 const r3 = await refresher.refreshSeries({ id: c2.id, user_id: u.id, imdb_url: null })
 if (!r3.skipped) fail('esperaba skipped=true para serie sin imdb_url')
@@ -250,7 +250,7 @@ log('  skipped OK')
 log('refreshSeries GraphQL 500 -> last_error poblado, sin crash')
 const c3 = await series.create(u.id, {
   type: 'anime', name: 'Broken', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: imdbURL('tt500', 1)
+  imdb_url: imdbURL('tt500', 1)
 })
 RESPONSES['tt500:1'] = { _http: 500 }
 await refresher.refreshSeries({ id: c3.id, user_id: u.id, imdb_url: imdbURL('tt500', 1) })
@@ -261,7 +261,7 @@ log(`  last_error OK: "${afterBroken.data.last_error}"`)
 log('refreshSeries URL no-IMDB -> last_error poblado (parseo falla)')
 const c4 = await series.create(u.id, {
   type: 'anime', name: 'Bad URL', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: 'https://example.com/feed'
+  imdb_url: 'https://example.com/feed'
 })
 await refresher.refreshSeries({ id: c4.id, user_id: u.id, imdb_url: 'https://example.com/feed' })
 const afterBad = await series.getById(c4.id, u.id)
@@ -277,7 +277,7 @@ RESPONSES['tt777:2'] = () => dynV2 ? seasonData('tt777', 2) : (() => {
 })()
 const c5 = await series.create(u.id, {
   type: 'anime', name: 'Dynamic', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: imdbURL('tt777', 2)
+  imdb_url: imdbURL('tt777', 2)
 })
 const d1 = await refresher.refreshSeries({ id: c5.id, user_id: u.id, imdb_url: imdbURL('tt777', 2) })
 if (d1.inserted !== 1) fail(`esperaba 1 insertado en dynamic v1, vino ${d1.inserted}`)

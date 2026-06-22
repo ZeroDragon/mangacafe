@@ -18,7 +18,7 @@ Loader(v-if="!loaded" text="Loading series…")
         span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
         span.badge.pending(v-if="pendingItems.length") {{ pendingItems.length }} pending
       h1.name {{ series.name }}
-      .chapter Current chapter: {{ series.current_chapter }}
+      .last-read Last read: {{ series.last_read || 'No data' }}
       .meta(v-if="series.url")
         a.outside(:href="series.url" target="_blank" rel="noopener")
           span.material-symbols-outlined open_in_new
@@ -134,12 +134,12 @@ export default {
       try {
         if (it.seen) {
           const res = await api.delete(`/api/series/${id}/items/${it.id}/seen`)
-          await this.loadFeed()
+          await Promise.all([this.loadSeries(), this.loadFeed()])
           const n = res.data.updated || 0
           this.$toast.success(n > 1 ? `${n} items marked as pending` : 'Marked as pending')
         } else {
           const res = await api.post(`/api/series/${id}/items/${it.id}/seen`)
-          await this.loadFeed()
+          await Promise.all([this.loadSeries(), this.loadFeed()])
           const n = res.data.updated || 0
           this.$toast.success(n > 1 ? `${n} items marked as seen` : 'Marked as seen')
         }
@@ -264,7 +264,7 @@ export default {
   margin 0
   font-size 22px
   font-weight 500
-.chapter
+.last-read
   font-size 14px
   opacity 0.75
 .meta, .feed-status

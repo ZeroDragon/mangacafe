@@ -1,5 +1,5 @@
 <template lang="pug">
-.series-card
+article.card(:class="{ error: series.last_error }")
   .cover
     img(
       v-if="series.cover_url"
@@ -12,14 +12,32 @@
   .body
     .top
       span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
-      span.pending(v-if="series.pending > 0") {{ series.pending }} pending
+      span.badge.pending(v-if="series.pending > 0") {{ series.pending }}
+      span.badge.error(v-else-if="series.last_error" title="Feed error")
+        span.material-symbols-outlined error
     h3.name
       router-link(:to="{ path: `/series/${series.id}` }") {{ series.name }}
-    .chapter Current ch.: {{ series.current_chapter }}
+    .line.latest(v-if="series.pending > 0") Latest: {{ series.last_item_title || '—' }}
+    .line.last-read Last read: {{ series.last_read || 'No data' }}
+    .error-msg(v-if="series.last_error" :title="series.last_error") Feed: {{ series.last_error }}
     .actions
-      button.btn.icon-only(@click="$emit('edit', series)" title="Edit")
+      router-link.btn.icon-only(:to="{ path: `/series/${series.id}` }" title="Open")
+        span.material-symbols-outlined open_in_new
+      button.btn.icon-only(
+        v-if="showMarkSeen"
+        @click="$emit('mark-seen', series)"
+        :disabled="series.pending === 0"
+        title="Mark all as seen")
+        span.material-symbols-outlined done_all
+      button.btn.icon-only(
+        v-if="showEdit"
+        @click="$emit('edit', series)"
+        title="Edit")
         span.material-symbols-outlined edit
-      button.btn.icon-only.danger(@click="$emit('delete', series)" title="Delete")
+      button.btn.icon-only.danger(
+        v-if="showEdit"
+        @click="$emit('delete', series)"
+        title="Delete")
         span.material-symbols-outlined delete
 </template>
 
@@ -27,9 +45,11 @@
 export default {
   name: 'SeriesCard',
   props: {
-    series: { type: Object, required: true }
+    series: { type: Object, required: true },
+    showEdit: { type: Boolean, default: false },
+    showMarkSeen: { type: Boolean, default: false }
   },
-  emits: ['edit', 'delete'],
+  emits: ['edit', 'delete', 'mark-seen'],
   methods: {
     onCoverError (e) {
       // Oculta el img roto y deja el placeholder (no console spam)
@@ -40,7 +60,7 @@ export default {
 </script>
 
 <style lang="stylus" scoped>
-.series-card
+.card
   display flex
   gap 12px
   background rgba(255,255,255,0.04)
@@ -48,6 +68,8 @@ export default {
   border-radius 10px
   padding 12px
   min-height 140px
+  &.error
+    border-color rgba(255,99,71,0.4)
 .cover
   width 80px
   height 116px
@@ -90,13 +112,21 @@ export default {
   &.manga
     color #9cf
     background rgba(153,204,255,0.1)
-.pending
+.badge
   font-size 12px
-  background var(--danger)
-  color #fff
   padding 2px 8px
   border-radius 999px
-  font-weight 500
+  display inline-flex
+  align-items center
+  &.pending
+    background var(--danger)
+    color #fff
+    font-weight 500
+  &.error
+    background rgba(255,99,71,0.15)
+    color var(--danger)
+    .material-symbols-outlined
+      font-size 16px
 .name
   margin 4px 0 0
   font-size 16px
@@ -108,9 +138,22 @@ export default {
     text-decoration none
     &:hover
       text-decoration underline
-.chapter
+.line
   font-size 13px
   opacity 0.75
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+.latest
+  color var(--primary)
+  opacity 0.9
+.error-msg
+  font-size 13px
+  color var(--danger)
+  opacity 0.9
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
 .actions
   margin-top auto
   display flex
@@ -124,8 +167,12 @@ export default {
   border-radius 6px
   cursor pointer
   display inline-flex
-  &:hover
+  text-decoration none
+  &:hover:not(:disabled)
     background rgba(255,255,255,0.08)
+  &:disabled
+    opacity 0.4
+    cursor not-allowed
   &.danger:hover
     background rgba(255,99,71,0.15)
     border-color var(--danger)

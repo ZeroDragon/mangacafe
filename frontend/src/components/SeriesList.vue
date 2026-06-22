@@ -17,6 +17,7 @@
       v-for="s in series"
       :key="s.id"
       :series="s"
+      :show-edit="true"
       @edit="onEdit"
       @delete="onDelete")
 </template>

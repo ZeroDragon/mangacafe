@@ -72,6 +72,25 @@ const addColumnIfMissing = (table, col, def = 'TEXT') => {
   })
 }
 
+// Elimina una columna si existe (SQLite >= 3.35 para DROP COLUMN).
+// Idempotente. Usado para borrar series.current_chapter (Épica 10: dato zombie).
+const dropColumnIfExists = (table, col) => {
+  return new Promise(resolve => {
+    db.all(`PRAGMA table_info(${table})`, (err, rows) => {
+      if (err) return resolve({ error: err })
+      const cols = rows.map(r => r.name)
+      if (!cols.includes(col)) {
+        return resolve({ info: `no drop needed (${table}.${col} absent)` })
+      }
+      db.run(`ALTER TABLE ${table} DROP COLUMN ${col}`, (err) => {
+        if (err) return resolve({ error: err })
+        console.log(`Dropped ${table}.${col}`)
+        resolve({ info: `dropped ${table}.${col}` })
+      })
+    })
+  })
+}
+
 export const ready = (async () => {
   // Migración previa: si existe la tabla series vieja con rss_url, renombrarla.
   // (CREATE TABLE usa imdb_url; este paso arregla bases preexistentes.)
@@ -79,6 +98,11 @@ export const ready = (async () => {
   // Épica 9: rss_url convive con imdb_url (dispatch por type). CREATE TABLE ya
   // trae rss_url en bases nuevas; esto agrega la columna a bases existentes.
   await addColumnIfMissing('series', 'rss_url', 'TEXT')
+  // Épica 10: last_read TEXT reemplaza a current_chapter (entero manual zombie).
+  // CREATE TABLE ya trae last_read y omite current_chapter en bases nuevas;
+  // esto aplica el cambio a bases existentes.
+  await addColumnIfMissing('series', 'last_read', 'TEXT')
+  await dropColumnIfExists('series', 'current_chapter')
 
   const tables = await Promise.all([
     createTable('users', `
@@ -96,7 +120,7 @@ export const ready = (async () => {
         name TEXT NOT NULL,
         url TEXT,
         cover_url TEXT,
-        current_chapter INTEGER NOT NULL DEFAULT 0,
+        last_read TEXT,
         imdb_url TEXT,
         rss_url TEXT,
         last_known_total INTEGER,

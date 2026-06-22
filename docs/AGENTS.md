@@ -31,6 +31,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 | 6 | Manga vs anime | **Entries independientes** con campo `type` (una serie no agrupa ambos) |
 | 7 | Fallos de IMDB | **Error visible** en el dashboard para que el usuario lo corrija |
 | 8 | Feed según `type` | **anime → URL de IMDB** (`imdb_url`); **manga → URL de RSS/Atom** (`rss_url`). Un campo u otro, nunca ambos (Épica 9) |
+| 9 | Indicador de progreso | El "último leído/visto" es el **`title` del último item visto** guardado en `series.last_read` (**string, nullable**), no un número de capítulo manual. Se recalcula solo al marcar items visto/no-visto. `NULL` ⇒ se muestra como **"No data"**. `series.current_chapter` se elimina por completo (dato zombie) (Épica 10) |
 
 ---
 

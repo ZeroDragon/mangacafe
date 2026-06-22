@@ -1,16 +1,16 @@
 import db from './db.mjs'
 
 const ALLOWED_FIELDS = [
-  'type', 'name', 'url', 'cover_url', 'current_chapter',
+  'type', 'name', 'url', 'cover_url', 'last_read',
   'imdb_url', 'rss_url', 'last_known_total', 'last_checked_at', 'last_error'
 ]
 
-const create = (userId, { type, name, url, cover_url, current_chapter, imdb_url, rss_url }) => {
+const create = (userId, { type, name, url, cover_url, last_read, imdb_url, rss_url }) => {
   return new Promise(resolve => {
     db.run(
-      `INSERT INTO series (user_id, type, name, url, cover_url, current_chapter, imdb_url, rss_url)
+      `INSERT INTO series (user_id, type, name, url, cover_url, last_read, imdb_url, rss_url)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, type, name, url, cover_url, current_chapter || 0, imdb_url || null, rss_url || null],
+      [userId, type, name, url, cover_url, last_read || null, imdb_url || null, rss_url || null],
       function (err) {
         if (err) {
           console.error(err)
@@ -25,14 +25,22 @@ const create = (userId, { type, name, url, cover_url, current_chapter, imdb_url,
 const listByUser = (userId) => {
   return new Promise(resolve => {
     db.all(
-      `SELECT s.*, COALESCE(si.pending, 0) AS pending
+      `SELECT s.*, COALESCE(p.pending, 0) AS pending,
+              li.title AS last_item_title, li.pub_date AS last_item_date, li.id AS last_item_id, li.link AS last_item_link
        FROM series s
        LEFT JOIN (
          SELECT series_id, COUNT(*) AS pending
          FROM series_items
          WHERE seen = 0
          GROUP BY series_id
-       ) si ON si.series_id = s.id
+       ) p ON p.series_id = s.id
+       LEFT JOIN (
+         SELECT series_id, MAX(id) AS max_id
+         FROM series_items
+         WHERE seen = 0
+         GROUP BY series_id
+       ) lm ON lm.series_id = s.id
+       LEFT JOIN series_items li ON li.id = lm.max_id
        WHERE s.user_id = ?
        ORDER BY s.updated_at DESC`,
       [userId],

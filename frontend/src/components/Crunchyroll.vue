@@ -329,8 +329,7 @@ export default {
       const seasonSuffix = it.season != null ? ` S${it.season}` : ''
       const query = {
         type: 'anime',
-        name: `${it.name}${seasonSuffix}`,
-        current_chapter: it.episode != null ? it.episode : 0
+        name: `${it.name}${seasonSuffix}`
       }
       if (imdb) {
         query.imdb_url = imdb.imdbUrl

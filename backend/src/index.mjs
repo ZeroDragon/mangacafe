@@ -101,8 +101,13 @@ const validateSeries = (body, partial = false) => {
     if (isAnime) errors.push('rss_url is only for manga; anime uses imdb_url')
   }
   if (has('current_chapter')) {
-    const n = Number(body.current_chapter)
-    if (!Number.isFinite(n) || n < 0) errors.push('current_chapter must be >= 0')
+    // Épica 10: current_chapter fue eliminado. Se ignora silenciosamente
+    // en PUT para no romper clientes cacheados; no se valida ni persiste.
+  }
+  if (has('last_read')) {
+    if (body.last_read !== null && typeof body.last_read !== 'string') {
+      errors.push('last_read must be a string or null')
+    }
   }
   return errors
 }
@@ -134,7 +139,7 @@ app.post('/api/series', [verifyToken, getUser, resolveUserId], async (req, res) 
     name: req.body.name.trim(),
     url: req.body.url || null,
     cover_url: req.body.cover_url || null,
-    current_chapter: req.body.current_chapter || 0,
+    last_read: req.body.last_read || null,
     imdb_url: isAnime ? (req.body.imdb_url || null) : null,
     rss_url: isAnime ? null : (req.body.rss_url || null)
   }
@@ -205,7 +210,7 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
     name: s.name,
     url: s.url,
     cover_url: s.cover_url,
-    current_chapter: s.current_chapter,
+    last_read: s.last_read,
     imdb_url: s.imdb_url,
     rss_url: s.rss_url,
     last_error: s.last_error,

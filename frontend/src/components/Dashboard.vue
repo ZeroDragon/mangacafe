@@ -38,10 +38,11 @@
   template(v-else)
     // Main grid: filterable view (Pending by default)
     .grid(v-if="filtered.length")
-      DashCard(
+      SeriesCard(
         v-for="s in filtered"
         :key="s.id"
         :series="s"
+        :show-mark-seen="true"
         @mark-seen="markSeen")
     .empty.filtered(v-else-if="filter === 'pending' && !search")
       span.material-symbols-outlined check_circle
@@ -56,17 +57,18 @@
     section.list-section(v-if="errorItems.length")
       h2.section-title.section-title-error Errors ({{ errorItems.length }})
       .grid
-        DashCard(
+        SeriesCard(
           v-for="s in errorItems"
           :key="s.id"
           :series="s"
+          :show-mark-seen="true"
           @mark-seen="markSeen")
 </template>
 
 <script>
 import api from '../api.js'
 import Loader from './Loader.vue'
-import DashCard from './DashCard.vue'
+import SeriesCard from './SeriesCard.vue'
 
 const FILTERS = [
   { key: 'pending', label: 'Pending' },
@@ -76,7 +78,7 @@ const FILTERS = [
 
 export default {
   name: 'Dashboard',
-  components: { Loader, DashCard },
+  components: { Loader, SeriesCard },
   data () {
     return {
       items: [],

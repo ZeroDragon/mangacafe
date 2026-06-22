@@ -75,10 +75,10 @@ log('POST /api/series con cover_url inválida -> 400')
 const badUrl = await request('post', '/api/series', { type: 'manga', name: 'X', cover_url: 'no-es-url' }, tokenA)
 if (badUrl.status !== 400) fail(`esperaba 400 cover_url inválida, vino ${badUrl.status}`)
 
-// --- POST: current_chapter negativo -> 400 ---
-log('POST /api/series con current_chapter -1 -> 400')
-const badChap = await request('post', '/api/series', { type: 'manga', name: 'X', current_chapter: -1 }, tokenA)
-if (badChap.status !== 400) fail(`esperaba 400 current_chapter negativo, vino ${badChap.status}`)
+// --- POST: last_read no-string -> 400 ---
+log('POST /api/series con last_read numérico -> 400')
+const badChap = await request('post', '/api/series', { type: 'manga', name: 'X', last_read: 123 }, tokenA)
+if (badChap.status !== 400) fail(`esperaba 400 last_read no-string, vino ${badChap.status}`)
 
 // --- POST: válido -> 200 con id + token rotado ---
 // Épica 9: manga usa rss_url (no imdb_url). El smoke original usaba imdb_url,
@@ -89,7 +89,6 @@ const created = await request('post', '/api/series', {
   name: ' One Punch Man ', // verificamos trim
   url: 'https://manga.example.com/opm',
   cover_url: 'https://cdn.example.com/opm.jpg',
-  current_chapter: 100,
   rss_url: 'https://manga.example.com/opm/feed.xml'
 }, tokenA)
 if (created.status !== 200 || !created.data.id) fail('POST válido falló: ' + JSON.stringify(created.data))
@@ -100,8 +99,7 @@ log(`Serie creada id=${seriesIdA}`)
 log('POST /api/series válido (anime, sin imdb)')
 const created2 = await request('post', '/api/series', {
   type: 'anime',
-  name: 'Frieren',
-  current_chapter: 12
+  name: 'Frieren'
 }, tokenA)
 if (created2.status !== 200 || !created2.data.id) fail('POST válido anime falló')
 const seriesIdA2 = created2.data.id
@@ -128,16 +126,21 @@ log('GET /api/series/99999999 (inexistente) -> 404')
 const missing = await request('get', '/api/series/99999999', null, tokenA)
 if (missing.status !== 404) fail(`esperaba 404, vino ${missing.status}`)
 
-// --- PUT: actualiza current_chapter y rss_url ---
+// --- PUT: actualiza last_read y rss_url ---
 log('PUT /api/series/:id actualiza campos')
 const updated = await request('put', `/api/series/${seriesIdA}`, {
-  current_chapter: 102,
+  last_read: 'Cap 102',
   rss_url: 'https://manga.example.com/opm/v2.xml'
 }, tokenA)
 if (updated.status !== 200) fail(`PUT falló: ${updated.status} ${JSON.stringify(updated.data)}`)
 const afterUpd = await request('get', `/api/series/${seriesIdA}`, null, tokenA)
-if (afterUpd.data.data.current_chapter !== 102) fail('current_chapter no actualizado')
+if (afterUpd.data.data.last_read !== 'Cap 102') fail('last_read no actualizado')
 if (afterUpd.data.data.rss_url !== 'https://manga.example.com/opm/v2.xml') fail('rss_url no actualizado')
+
+// --- PUT: current_chapter (legacy, de cliente viejo) se ignora silenciosamente ---
+log('PUT con current_chapter (legacy) -> 200, se ignora')
+const legacyPut = await request('put', `/api/series/${seriesIdA}`, { current_chapter: 999 }, tokenA)
+if (legacyPut.status !== 200) fail(`legacy PUT debería ser 200, vino ${legacyPut.status}`)
 
 // --- PUT: type inválido -> 400 ---
 log('PUT con type inválido -> 400')
@@ -154,11 +157,11 @@ const bList = await request('get', '/api/series', null, tokenB)
 if (bList.data.data.find(s => s.id === seriesIdA)) fail('serie de A aparece en lista de B')
 
 log('Ownership: B no puede PUT la serie de A -> 404')
-const bPut = await request('put', `/api/series/${seriesIdA}`, { current_chapter: 999 }, tokenB)
+const bPut = await request('put', `/api/series/${seriesIdA}`, { last_read: 'hack' }, tokenB)
 if (bPut.status !== 404) fail(`esperaba 404 PUT de B sobre serie de A, vino ${bPut.status}`)
 // verificamos que el PUT de B no haya modificado nada
 const stillA = await request('get', `/api/series/${seriesIdA}`, null, tokenA)
-if (stillA.data.data.current_chapter !== 102) fail('PUT de B modificó la serie de A!')
+if (stillA.data.data.last_read !== 'Cap 102') fail('PUT de B modificó la serie de A!')
 
 log('Ownership: B no puede DELETE la serie de A -> 404')
 const bDel = await request('delete', `/api/series/${seriesIdA}`, null, tokenB)

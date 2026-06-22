@@ -149,7 +149,7 @@ log(`Usuario ${username} id=${u.id}`)
 log('refreshSeries manga con rss_url -> flujo RSS (3 items)')
 const c1 = await series.create(u.id, {
   type: 'manga', name: 'Manga RSS', url: null, cover_url: null,
-  current_chapter: 0, rss_url: feedURL('/rss.xml')
+  rss_url: feedURL('/rss.xml')
 })
 const sid1 = c1.id
 const full1 = await series.getById(sid1, u.id)
@@ -173,7 +173,7 @@ log('  dedupe OK')
 log('refreshSeries anime con imdb_url -> flujo IMDB (mock GraphQL, 2 items)')
 const c2 = await series.create(u.id, {
   type: 'anime', name: 'Anime IMDB', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: animeURL()
+  imdb_url: animeURL()
 })
 const full2 = await series.getById(c2.id, u.id)
 const r3 = await refresher.refreshSeries(full2.data)
@@ -185,8 +185,7 @@ log(`  anime IMDB OK (${r3.total} items, dispatch intacto)`)
 // ============ Dispatch: sin feed del tipo correcto ============
 log('refreshSeries manga sin rss_url -> skipped (no toca imdb_url)')
 const c3 = await series.create(u.id, {
-  type: 'manga', name: 'Manga sin feed', url: null, cover_url: null,
-  current_chapter: 0
+  type: 'manga', name: 'Manga sin feed', url: null, cover_url: null
 })
 const r4 = await refresher.refreshSeries((await series.getById(c3.id, u.id)).data)
 if (!r4.skipped) fail('manga sin rss_url debería skipped')
@@ -194,8 +193,7 @@ log('  manga skipped OK')
 
 log('refreshSeries anime sin imdb_url -> skipped')
 const c4 = await series.create(u.id, {
-  type: 'anime', name: 'Anime sin feed', url: null, cover_url: null,
-  current_chapter: 0
+  type: 'anime', name: 'Anime sin feed', url: null, cover_url: null
 })
 const r5 = await refresher.refreshSeries((await series.getById(c4.id, u.id)).data)
 if (!r5.skipped) fail('anime sin imdb_url debería skipped')
@@ -205,7 +203,7 @@ log('  anime skipped OK')
 log('refreshSeries manga feed 500 -> last_error poblado, sin crash')
 const c5 = await series.create(u.id, {
   type: 'manga', name: 'Broken 500', url: null, cover_url: null,
-  current_chapter: 0, rss_url: feedURL('/broken')
+  rss_url: feedURL('/broken')
 })
 await refresher.refreshSeries((await series.getById(c5.id, u.id)).data)
 const after5 = await series.getById(c5.id, u.id)
@@ -215,7 +213,7 @@ log(`  500 OK: "${after5.data.last_error}"`)
 log('refreshSeries manga feed 404 -> last_error poblado')
 const c6 = await series.create(u.id, {
   type: 'manga', name: 'Broken 404', url: null, cover_url: null,
-  current_chapter: 0, rss_url: feedURL('/no-existe')
+  rss_url: feedURL('/no-existe')
 })
 await refresher.refreshSeries((await series.getById(c6.id, u.id)).data)
 const after6 = await series.getById(c6.id, u.id)
@@ -225,7 +223,7 @@ log(`  404 OK: "${after6.data.last_error}"`)
 log('refreshSeries manga feed dinámico: detecta item nuevo en 2do fetch')
 const c7 = await series.create(u.id, {
   type: 'manga', name: 'Dynamic', url: null, cover_url: null,
-  current_chapter: 0, rss_url: feedURL('/dynamic.xml')
+  rss_url: feedURL('/dynamic.xml')
 })
 const d1 = await refresher.refreshSeries((await series.getById(c7.id, u.id)).data)
 if (d1.inserted !== 1) fail(`esperaba 1 insertado en dynamic v1, vino ${d1.inserted}`)

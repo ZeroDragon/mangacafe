@@ -33,7 +33,7 @@ const { data: u } = await user.getBy('username', username)
 // Serie 1: con 3 items pendientes
 const s1 = await series.create(u.id, {
   type: 'manga', name: 'Con pendientes', url: null, cover_url: null,
-  current_chapter: 100, imdb_url: null
+  imdb_url: null
 })
 await seriesItem.insertMany(s1.id, [
   { guid: 'a1', title: 'Cap 101', link: 'http://x/1', pub_date: 1700000000 },
@@ -44,7 +44,7 @@ await seriesItem.insertMany(s1.id, [
 // Serie 2: con 1 item pendiente
 const s2 = await series.create(u.id, {
   type: 'anime', name: 'Un pendiente', url: null, cover_url: null,
-  current_chapter: 5, imdb_url: null
+  imdb_url: null
 })
 await seriesItem.insertMany(s2.id, [
   { guid: 'b1', title: 'Ep 6', link: 'http://x/6', pub_date: 1700003000 }
@@ -53,13 +53,13 @@ await seriesItem.insertMany(s2.id, [
 // Serie 3: sin items
 const s3 = await series.create(u.id, {
   type: 'manga', name: 'Sin items', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: null
+  imdb_url: null
 })
 
 // Serie 4: con error de IMDB para verificar visibilidad
 const s4 = await series.create(u.id, {
   type: 'manga', name: 'Con error', url: null, cover_url: null,
-  current_chapter: 0, imdb_url: 'https://www.imdb.com/title/tt9999999/episodes/?season=1'
+  imdb_url: 'https://www.imdb.com/title/tt9999999/episodes/?season=1'
 })
 await series.update(s4.id, u.id, { last_error: 'ETIMEDOUT', last_checked_at: 1700005000 })
 
@@ -111,7 +111,10 @@ if (!conPend.last_item_link) fail('falta last_item_link')
 const sinItems = items.find(s => s.name === 'Sin items')
 if (sinItems.hasUpdates) fail('sin items debería tener hasUpdates=false')
 if (sinItems.pending !== 0) fail('pending debería ser 0')
-log('  dashboard OK (4 series, summary correcto, error visible, last_item)')
+
+// last_read: ninguna serie tiene items vistos aún -> todas null ("No data")
+if (!items.every(s => s.last_read === null)) fail('last_read debería ser null en todas (nada visto aún)')
+log('  dashboard OK (4 series, summary correcto, error visible, last_item, last_read null)')
 
 // --- Ownership: B no ve las series de A ---
 log('Ownership: dashboard de B no tiene series de A')
@@ -133,8 +136,9 @@ const dash2 = await request('get', '/api/dashboard', null, tokenA)
 const s1after = dash2.data.data.find(s => s.id === s1.id)
 if (s1after.pending !== 0) fail(`pending debería ser 0 tras seen-all, vino ${s1after.pending}`)
 if (s1after.hasUpdates) fail('hasUpdates debería ser false tras seen-all')
+if (s1after.last_read !== 'Cap 103') fail(`last_read debería ser 'Cap 103' tras seen-all (último cronológico), vino ${s1after.last_read}`)
 if (sum.totalPending - 3 !== dash2.data.summary.totalPending) fail('summary.totalPending mal tras seen-all')
-log('  seen-all OK (pending=0, summary actualizado)')
+log('  seen-all OK (pending=0, last_read=Cap 103, summary actualizado)')
 
 log('seen-all sobre serie ajena -> 404')
 const bSeen = await request('post', `/api/series/${s1.id}/seen-all`, null, tokenB)
