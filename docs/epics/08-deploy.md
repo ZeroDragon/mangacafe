@@ -1,6 +1,6 @@
 # Épica 8 — Deploy e infra
 
-**Estado:** `[IN PROGRESS]`
+**Estado:** `[DONE]`
 **Objetivo:** Ajustar env, scheduler de RSS, y pipeline de deploy para el nuevo flujo.
 
 **Depende de:** Épicas 1–4 mínimamente (para que haya algo que deployar).
@@ -45,9 +45,9 @@
 - [x] Documentar `RSS_USER_AGENT`, `RSS_TIMEOUT`, `IMDB_*` y `BUILD_OUT_DIR` en `env_example`.
 - [x] DB de producción reseteada (decisión del usuario; las migraciones igual son idempotentes).
 - [x] Fix `deploy.yml`: `pm2 restart` → `pm2 delete` + `pm2 start ecosystem.config.cjs` + `pm2 save` (para que cargue código nuevo y el ecosystem correcto).
-- [ ] Probar `deploy.yml` manual (`workflow_dispatch`) con `secrets.ENVFILE` actualizado con las vars nuevas (incluido `BUILD_OUT_DIR`).
-- [ ] Verificar que el frontend build output es servido correctamente por nginx (rutas SPA, assets).
-- [ ] Smoke test post-deploy: crear usuario, serie (manga con RSS, anime con IMDB), refrescar feed, ver dashboard.
+- [x] Probar `deploy.yml` manual (`workflow_dispatch`) con `secrets.ENVFILE` actualizado con las vars nuevas (incluido `BUILD_OUT_DIR`).
+- [x] Verificar que el frontend build output es servido correctamente por nginx (rutas SPA, assets).
+- [x] Smoke test post-deploy: crear usuario, serie (manga con RSS, anime con IMDB), refrescar feed, ver dashboard.
 
 ## Verificación
 
@@ -55,7 +55,7 @@
 - [x] Backend en producción crea las tablas nuevas al bootear (visto en logs: "Creating table 'users' / 'series' / 'series_items'").
 - [x] El scheduler corre al boot (visto en logs: `[feeds] refreshAll: refreshed=0 failed=0 total=0` — sin series todavía).
 - [x] App responde vía nginx (`curl https://api.mangacafe.vip/api/` → `{"message":"Manga Café API"}`).
-- [ ] Dashboard carga datos reales tras crear series y disparar refresh.
+- [x] Dashboard carga datos reales tras crear series y disparar refresh.
 
 ## Notas
 

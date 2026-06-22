@@ -48,7 +48,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 5 | Dashboard de actualizaciones | `[DONE]` | [epics/05-dashboard.md](epics/05-dashboard.md) |
 | 6 | Detalle de serie | `[DONE]` | [epics/06-series-detail.md](epics/06-series-detail.md) |
 | 7 | Pulido y UX | `[DONE]` | [epics/07-polish.md](epics/07-polish.md) |
-| 8 | Deploy e infra | `[IN PROGRESS]` | [epics/08-deploy.md](epics/08-deploy.md) |
+| 8 | Deploy e infra | `[DONE]` | [epics/08-deploy.md](epics/08-deploy.md) |
 | 9 | Motor RSS para mangas | `[DONE]` | [epics/09-manga-rss.md](epics/09-manga-rss.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
