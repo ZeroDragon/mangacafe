@@ -293,7 +293,13 @@ const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 if (isMain) {
   // Scheduler IMDB: refresh al boot + cada 6h (Épica 4, decisión 5)
   refresher.startScheduler({ runImmediately: true })
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
+  const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT} (pid ${process.pid})`)
+  })
+  // Sin esto, un error de bind (EADDRINUSE, permisos) muere silenciosamente
+  // y PM2 puede quedar mostrando el proceso como "online" sin escuchar.
+  server.on('error', (err) => {
+    console.error(`[listen] error on port ${PORT}:`, err.code || err.message)
+    process.exit(1)
   })
 }
