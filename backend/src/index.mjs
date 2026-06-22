@@ -66,10 +66,13 @@ export const resolveUserId = async (req, res, next) => {
 }
 
 const VALID_TYPES = ['manga', 'anime']
-const URL_FIELDS = ['url', 'cover_url', 'imdb_url']
+const URL_FIELDS = ['url', 'cover_url']
 const isHttpUrl = (v) => typeof v === 'string' && /^https?:\/\/.+/.test(v)
 
 // Devuelve array de mensajes de error. `partial=true` permite omitir campos (PUT).
+// Reglas de feed por type (Épica 9):
+//  - anime: solo imdb_url; rss_url rechazado.
+//  - manga: solo rss_url; imdb_url rechazado.
 const validateSeries = (body, partial = false) => {
   const errors = []
   const has = (k) => Object.prototype.hasOwnProperty.call(body, k)
@@ -84,6 +87,18 @@ const validateSeries = (body, partial = false) => {
     if (has(f) && body[f] !== '' && body[f] != null) {
       if (!isHttpUrl(body[f])) errors.push(`${f} must be an http(s) URL`)
     }
+  }
+  // Feed por tipo
+  const type = body.type
+  const isAnime = type === 'anime'
+  const isManga = type === 'manga'
+  if (has('imdb_url') && body.imdb_url !== '' && body.imdb_url != null) {
+    if (!isHttpUrl(body.imdb_url)) errors.push('imdb_url must be an http(s) URL')
+    if (isManga) errors.push('imdb_url is only for anime; manga uses rss_url')
+  }
+  if (has('rss_url') && body.rss_url !== '' && body.rss_url != null) {
+    if (!isHttpUrl(body.rss_url)) errors.push('rss_url must be an http(s) URL')
+    if (isAnime) errors.push('rss_url is only for manga; anime uses imdb_url')
   }
   if (has('current_chapter')) {
     const n = Number(body.current_chapter)
@@ -112,13 +127,16 @@ app.get('/api/series', [verifyToken, getUser, resolveUserId], async (_req, res) 
 app.post('/api/series', [verifyToken, getUser, resolveUserId], async (req, res) => {
   const errors = validateSeries(req.body)
   if (errors.length) return res.status(400).json({ error: errors.join('; ') })
+  // Feed por tipo: solo se persiste el campo que corresponde al type.
+  const isAnime = req.body.type === 'anime'
   const payload = {
     type: req.body.type,
     name: req.body.name.trim(),
     url: req.body.url || null,
     cover_url: req.body.cover_url || null,
     current_chapter: req.body.current_chapter || 0,
-    imdb_url: req.body.imdb_url || null
+    imdb_url: isAnime ? (req.body.imdb_url || null) : null,
+    rss_url: isAnime ? null : (req.body.rss_url || null)
   }
   const { error, id } = await series.create(res.userId, payload)
   if (error) return res.status(500).json({ error })
@@ -135,7 +153,21 @@ app.get('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, re
 app.put('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, res) => {
   const errors = validateSeries(req.body, true)
   if (errors.length) return res.status(400).json({ error: errors.join('; ') })
-  const { error } = await series.update(req.params.id, res.userId, req.body)
+  // Determinar el tipo efectivo (del body si cambia, o del valor existente).
+  // Así podemos forzar a null el campo del otro tipo y mantener el dispatch limpio.
+  const { data: existing } = await series.getById(req.params.id, res.userId)
+  if (!existing) return res.status(404).json({ error: 'Series not found or not owned' })
+  const effectiveType = req.body.type || existing.type
+  const isAnime = effectiveType === 'anime'
+  const fields = { ...req.body }
+  if (isAnime) {
+    fields.imdb_url = req.body.imdb_url !== undefined ? (req.body.imdb_url || null) : existing.imdb_url
+    fields.rss_url = null
+  } else {
+    fields.rss_url = req.body.rss_url !== undefined ? (req.body.rss_url || null) : existing.rss_url
+    fields.imdb_url = null
+  }
+  const { error } = await series.update(req.params.id, res.userId, fields)
   if (error) return res.status(404).json({ error: 'Series not found or not owned' })
   res.json({ success: true, token: res.newToken })
 })
@@ -175,6 +207,7 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
     cover_url: s.cover_url,
     current_chapter: s.current_chapter,
     imdb_url: s.imdb_url,
+    rss_url: s.rss_url,
     last_error: s.last_error,
     last_checked_at: s.last_checked_at,
     pending: s.pending,

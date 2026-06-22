@@ -26,10 +26,11 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 | 1 | Hashing de password | **`bcrypt`** (cost factor 10; migración de `md5` completada en Épica 2) |
 | 2 | Usuarios | **Multiusuario real** (filtrar siempre por `user_id`, índices estrictos) |
 | 3 | Portada | **Solo URL externa** (no subir archivos, no usar `multer`, no carpeta de imágenes) |
-| 4 | Detección de nº de capítulo | **Conteo de episodios de IMDB nuevos (ya emitidos) desde el último visto**. Si no funciona, se itera |
+| 4 | Detección de nº de capítulo | **Conteo de items nuevos (ya emitidos/publicados) del feed** desde el último visto — IMDB para anime, RSS para manga (Épica 9). Si no funciona, se itera |
 | 5 | Cron de refresco IMDB | **Cada 6h en producción** + **trigger on-demand para desarrollo** |
 | 6 | Manga vs anime | **Entries independientes** con campo `type` (una serie no agrupa ambos) |
 | 7 | Fallos de IMDB | **Error visible** en el dashboard para que el usuario lo corrija |
+| 8 | Feed según `type` | **anime → URL de IMDB** (`imdb_url`); **manga → URL de RSS/Atom** (`rss_url`). Un campo u otro, nunca ambos (Épica 9) |
 
 ---
 

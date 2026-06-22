@@ -53,10 +53,32 @@ const renameColumnIfMissing = (table, oldCol, newCol) => {
   })
 }
 
+// Agrega una columna si no existe (SQLite >= 3.35 para ADD COLUMN con defaults simples).
+// Idempotente. Usado para re-agregar series.rss_url (convive con imdb_url).
+const addColumnIfMissing = (table, col, def = 'TEXT') => {
+  return new Promise(resolve => {
+    db.all(`PRAGMA table_info(${table})`, (err, rows) => {
+      if (err) return resolve({ error: err })
+      const cols = rows.map(r => r.name)
+      if (cols.includes(col)) {
+        return resolve({ info: `no add needed (${table}.${col})` })
+      }
+      db.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`, (err) => {
+        if (err) return resolve({ error: err })
+        console.log(`Added ${table}.${col}`)
+        resolve({ info: `added ${table}.${col}` })
+      })
+    })
+  })
+}
+
 export const ready = (async () => {
   // Migración previa: si existe la tabla series vieja con rss_url, renombrarla.
   // (CREATE TABLE usa imdb_url; este paso arregla bases preexistentes.)
   await renameColumnIfMissing('series', 'rss_url', 'imdb_url')
+  // Épica 9: rss_url convive con imdb_url (dispatch por type). CREATE TABLE ya
+  // trae rss_url en bases nuevas; esto agrega la columna a bases existentes.
+  await addColumnIfMissing('series', 'rss_url', 'TEXT')
 
   const tables = await Promise.all([
     createTable('users', `
@@ -76,6 +98,7 @@ export const ready = (async () => {
         cover_url TEXT,
         current_chapter INTEGER NOT NULL DEFAULT 0,
         imdb_url TEXT,
+        rss_url TEXT,
         last_known_total INTEGER,
         last_checked_at INTEGER,
         last_error TEXT,

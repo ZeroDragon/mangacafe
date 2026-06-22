@@ -81,6 +81,8 @@ const badChap = await request('post', '/api/series', { type: 'manga', name: 'X',
 if (badChap.status !== 400) fail(`esperaba 400 current_chapter negativo, vino ${badChap.status}`)
 
 // --- POST: válido -> 200 con id + token rotado ---
+// Épica 9: manga usa rss_url (no imdb_url). El smoke original usaba imdb_url,
+// pero el dispatch por type lo rechaza ahora.
 log('POST /api/series válido (manga)')
 const created = await request('post', '/api/series', {
   type: 'manga',
@@ -88,7 +90,7 @@ const created = await request('post', '/api/series', {
   url: 'https://manga.example.com/opm',
   cover_url: 'https://cdn.example.com/opm.jpg',
   current_chapter: 100,
-  imdb_url: 'https://www.imdb.com/title/tt0000001/episodes/?season=1'
+  rss_url: 'https://manga.example.com/opm/feed.xml'
 }, tokenA)
 if (created.status !== 200 || !created.data.id) fail('POST válido falló: ' + JSON.stringify(created.data))
 const seriesIdA = created.data.id
@@ -113,7 +115,7 @@ if (!opm) fail('no encontré la serie creada')
 if (opm.name !== 'One Punch Man') fail(`name no fue trimeado: "${opm.name}"`)
 if (opm.pending !== 0) fail(`pending debería ser 0 (sin items), vino ${opm.pending}`)
 if (opm.type !== 'manga') fail('type mal')
-if (opm.imdb_url !== 'https://www.imdb.com/title/tt0000001/episodes/?season=1') fail('imdb_url mal')
+if (opm.rss_url !== 'https://manga.example.com/opm/feed.xml') fail('rss_url mal')
 
 // --- GET detalle ---
 log('GET /api/series/:id detalle')
@@ -126,16 +128,16 @@ log('GET /api/series/99999999 (inexistente) -> 404')
 const missing = await request('get', '/api/series/99999999', null, tokenA)
 if (missing.status !== 404) fail(`esperaba 404, vino ${missing.status}`)
 
-// --- PUT: actualiza current_chapter y imdb_url ---
+// --- PUT: actualiza current_chapter y rss_url ---
 log('PUT /api/series/:id actualiza campos')
 const updated = await request('put', `/api/series/${seriesIdA}`, {
   current_chapter: 102,
-  imdb_url: 'https://www.imdb.com/title/tt0000002/episodes/?season=1'
+  rss_url: 'https://manga.example.com/opm/v2.xml'
 }, tokenA)
 if (updated.status !== 200) fail(`PUT falló: ${updated.status} ${JSON.stringify(updated.data)}`)
 const afterUpd = await request('get', `/api/series/${seriesIdA}`, null, tokenA)
 if (afterUpd.data.data.current_chapter !== 102) fail('current_chapter no actualizado')
-if (afterUpd.data.data.imdb_url !== 'https://www.imdb.com/title/tt0000002/episodes/?season=1') fail('imdb_url no actualizado')
+if (afterUpd.data.data.rss_url !== 'https://manga.example.com/opm/v2.xml') fail('rss_url no actualizado')
 
 // --- PUT: type inválido -> 400 ---
 log('PUT con type inválido -> 400')

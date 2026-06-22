@@ -23,18 +23,18 @@ Loader(v-if="!loaded" text="Loading series…")
         a.outside(:href="series.url" target="_blank" rel="noopener")
           span.material-symbols-outlined open_in_new
           span Open where I read/watch it
-      .imdb-status(v-if="series.imdb_url")
-        span.material-symbols-outlined movie
-        span(v-if="series.last_error" class="imdb-error" :title="series.last_error") IMDB error: {{ series.last_error }}
+      .feed-status(v-if="feedUrl")
+        span.material-symbols-outlined {{ series.type === 'anime' ? 'movie' : 'newspaper' }}
+        span(v-if="series.last_error" class="feed-error" :title="series.last_error") {{ feedLabel }} error: {{ series.last_error }}
         span(v-else-if="series.last_checked_at") Last refresh: {{ formatDate(series.last_checked_at) }}
         span(v-else) Not refreshed yet
-      .imdb-status.empty(v-else)
+      .feed-status.empty(v-else)
         span.material-symbols-outlined info
-        span No IMDB URL — add one in edit for automatic tracking
+        span No {{ feedLabel }} feed — add one in edit for automatic tracking
       .actions
         button.btn(@click="refresh" :disabled="refreshing")
           span.material-symbols-outlined {{ refreshing ? 'progress_activity' : 'sync' }}
-          span {{ refreshing ? 'Refreshing…' : 'Refresh IMDB' }}
+          span {{ refreshing ? 'Refreshing…' : `Refresh ${feedLabel}` }}
         button.btn.all(@click="seenAll" :disabled="!pendingItems.length")
           span.material-symbols-outlined done_all
           span Mark all as seen
@@ -49,7 +49,7 @@ Loader(v-if="!loaded" text="Loading series…")
     h2(v-if="items.length") Chapters / episodes
     .empty(v-if="!items.length")
       span.material-symbols-outlined inbox
-      p No feed items yet. {{ series.imdb_url ? 'Try refreshing.' : 'Add an IMDB episodes URL for automatic tracking.' }}
+      p No feed items yet. {{ feedUrl ? 'Try refreshing.' : `Add a ${feedLabel} feed URL for automatic tracking.` }}
     ul.items(v-else)
       li.item(
         v-for="it in items"
@@ -92,6 +92,13 @@ export default {
   computed: {
     pendingItems () {
       return this.items.filter(i => !i.seen)
+    },
+    feedUrl () {
+      if (!this.series) return ''
+      return this.series.type === 'anime' ? (this.series.imdb_url || '') : (this.series.rss_url || '')
+    },
+    feedLabel () {
+      return this.series && this.series.type === 'anime' ? 'IMDB' : 'RSS'
     }
   },
   async mounted () {
@@ -258,7 +265,7 @@ export default {
 .chapter
   font-size 14px
   opacity 0.75
-.meta, .imdb-status
+.meta, .feed-status
   font-size 13px
   display flex
   align-items center
@@ -267,7 +274,7 @@ export default {
     font-size 18px
   &.empty
     opacity 0.6
-  .imdb-error
+  .feed-error
     color var(--danger)
 .outside
   display inline-flex

@@ -25,9 +25,12 @@
     label
       span Current chapter
       input(v-model.number="form.current_chapter" type="number" min="0" step="1")
-    label
+    label(v-if="form.type === 'anime'")
       span IMDB episodes URL (optional)
       input(v-model="form.imdb_url" type="url" placeholder="https://www.imdb.com/title/tt.../episodes/?season=2")
+    label(v-else)
+      span RSS feed URL (optional)
+      input(v-model="form.rss_url" type="url" placeholder="https://manga-site.com/feed")
     .actions
       button(type="submit" :disabled="loading") {{ isEdit ? 'Save' : 'Create' }}
       button.cancel(type="button" @click="$router.push('/series')") Cancel
@@ -47,7 +50,8 @@ export default {
         url: '',
         cover_url: '',
         current_chapter: 0,
-        imdb_url: ''
+        imdb_url: '',
+        rss_url: ''
       },
       loading: false,
       error: ''
@@ -56,6 +60,15 @@ export default {
   computed: {
     isEdit () {
       return !!this.$route.params.id
+    }
+  },
+  watch: {
+    // Al toggleear el tipo, limpiamos el campo del otro tipo para no mandar
+    // basura (el backend rechazaría el campo equivocado para el type).
+    'form.type' (next, prev) {
+      if (!prev || next === prev) return
+      if (next === 'anime') this.form.rss_url = ''
+      else this.form.imdb_url = ''
     }
   },
   async mounted () {
@@ -74,6 +87,7 @@ export default {
       if (typeof q.url === 'string' && q.url) this.form.url = q.url
       if (typeof q.cover_url === 'string' && q.cover_url) this.form.cover_url = q.cover_url
       if (typeof q.imdb_url === 'string' && q.imdb_url) this.form.imdb_url = q.imdb_url
+      if (typeof q.rss_url === 'string' && q.rss_url) this.form.rss_url = q.rss_url
       if (q.current_chapter !== undefined && q.current_chapter !== null && q.current_chapter !== '') {
         this.form.current_chapter = Number(q.current_chapter) || 0
       }
@@ -88,7 +102,8 @@ export default {
           url: s.url || '',
           cover_url: s.cover_url || '',
           current_chapter: s.current_chapter,
-          imdb_url: s.imdb_url || ''
+          imdb_url: s.imdb_url || '',
+          rss_url: s.rss_url || ''
         }
       } catch (e) {
         this.error = (e.response && e.response.data && e.response.data.error) || 'Could not load the series'
@@ -100,7 +115,10 @@ export default {
       if (this.form.current_chapter === '' || this.form.current_chapter === null || Number(this.form.current_chapter) < 0) {
         errs.push('Current chapter must be >= 0')
       }
-      for (const f of ['url', 'cover_url', 'imdb_url']) {
+      const urlFields = ['url', 'cover_url']
+      if (this.form.type === 'anime') urlFields.push('imdb_url')
+      else urlFields.push('rss_url')
+      for (const f of urlFields) {
         const v = this.form[f] && this.form[f].trim()
         if (v && !/^https?:\/\//.test(v)) errs.push(`${f} must be an http(s) URL`)
       }
@@ -114,13 +132,15 @@ export default {
         return
       }
       this.loading = true
+      const isAnime = this.form.type === 'anime'
       const payload = {
         type: this.form.type,
         name: this.form.name.trim(),
         url: this.form.url.trim() || null,
         cover_url: this.form.cover_url.trim() || null,
         current_chapter: Number(this.form.current_chapter) || 0,
-        imdb_url: this.form.imdb_url.trim() || null
+        imdb_url: isAnime ? (this.form.imdb_url.trim() || null) : null,
+        rss_url: isAnime ? null : (this.form.rss_url.trim() || null)
       }
       try {
         if (this.isEdit) {

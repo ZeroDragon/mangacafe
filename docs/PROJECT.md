@@ -24,10 +24,11 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 1. **Password:** migrar `md5` → `bcrypt` (Épica 2).
 2. **Multiusuario** real: aislamiento estricto por `user_id`.
 3. **Portada:** URL externa únicamente. Nada de subidas.
-4. **Conteo de pendientes:** episodios de IMDB nuevos (ya emitidos) no vistos. Iterar si no alcanza.
+4. **Conteo de pendientes:** items nuevos (ya emitidos/publicados) no vistos del feed de la serie. Para anime vienen de IMDB; para manga, del feed RSS (Épica 9). Iterar si no alcanza.
 5. **Refresco IMDB:** cada 6h en prod; on-demand en dev.
 6. **Series independientes:** manga y anime son entries distintos con `type`.
 7. **Errores de IMDB:** visibles en el dashboard.
+8. **Feed según `type`:** anime → URL de IMDB (`imdb_url`); manga → URL de RSS/Atom (`rss_url`). Un campo u otro, nunca ambos (Épica 9).
 
 ## Stack conservado
 
@@ -48,6 +49,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 6 | Detalle de serie | `[DONE]` | [epics/06-series-detail.md](epics/06-series-detail.md) |
 | 7 | Pulido y UX | `[DONE]` | [epics/07-polish.md](epics/07-polish.md) |
 | 8 | Deploy e infra | `[PENDING]` | [epics/08-deploy.md](epics/08-deploy.md) |
+| 9 | Motor RSS para mangas | `[DONE]` | [epics/09-manga-rss.md](epics/09-manga-rss.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 

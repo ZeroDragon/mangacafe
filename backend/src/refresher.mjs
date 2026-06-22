@@ -2,15 +2,29 @@ import db from './models/db.mjs'
 import series from './models/series.mjs'
 import seriesItem from './models/series_item.mjs'
 import fetchEpisodes, { airedUntilEpoch } from './imdb.mjs'
+import axios from 'axios'
+import parseFeed from './rss.mjs'
 
 const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000 // 6h (decisión 5)
 const DELAY_BETWEEN_FETCHES_MS = 800 // rate limit suave entre fetches
 
+const RSS_UA = process.env.RSS_USER_AGENT || 'MangaCafeRSS/1.0 (+https://github.com/mangacafe)'
+const RSS_TIMEOUT = Number(process.env.RSS_TIMEOUT) || 15000
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const now = () => Math.floor(Date.now() / 1000)
 
-// Refresca una sola serie. Setea last_error en fallo (no revienta al caller).
+// Refresca una sola serie ramificando por type (Épica 9):
+//  - anime: IMDB (fetchEpisodes + purga de no emitidos).
+//  - manga: RSS/Atom (parseFeed).
+// Setea last_error en fallo (no revienta al caller). Skipea si no tiene el feed
+// que corresponde a su tipo.
 const refreshSeries = async (s) => {
+  if (s.type === 'manga') return refreshManga(s)
+  return refreshAnime(s)
+}
+
+const refreshAnime = async (s) => {
   if (!s.imdb_url) return { skipped: true }
   try {
     const { items, total } = await fetchEpisodes(s.imdb_url)
@@ -34,11 +48,45 @@ const refreshSeries = async (s) => {
   }
 }
 
-// Refresca todas las series con imdb_url (de todos los usuarios). Scheduler de fondo.
+const refreshManga = async (s) => {
+  if (!s.rss_url) return { skipped: true }
+  try {
+    const res = await axios.get(s.rss_url, {
+      headers: { 'User-Agent': RSS_UA },
+      timeout: RSS_TIMEOUT,
+      responseType: 'text',
+      // algunos feeds vienen como application/xml o text/xml; queremos el body crudo
+      transformResponse: [d => d]
+    })
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    const items = await parseFeed(res.data)
+    const { inserted } = await seriesItem.insertMany(s.id, items)
+    const total = items.length
+    await series.update(s.id, s.user_id, {
+      last_known_total: total,
+      last_checked_at: now(),
+      last_error: null
+    })
+    return { success: true, total, inserted }
+  } catch (err) {
+    const message = err?.message || String(err)
+    await series.update(s.id, s.user_id, {
+      last_checked_at: now(),
+      last_error: message.slice(0, 500)
+    })
+    return { error: message }
+  }
+}
+
+// Refresca todas las series con un feed (imdb_url o rss_url, de todos los usuarios).
 const refreshAll = async () => {
   const rows = await new Promise(resolve => {
     db.all(
-      `SELECT * FROM series WHERE imdb_url IS NOT NULL AND imdb_url != ''`,
+      `SELECT * FROM series
+       WHERE (imdb_url IS NOT NULL AND imdb_url != '')
+          OR (rss_url IS NOT NULL AND rss_url != '')`,
       [],
       (err, data) => {
         if (err) {
@@ -64,7 +112,10 @@ const refreshAll = async () => {
 // Refresca las series de un usuario (para el endpoint on-demand). Respeta ownership.
 const refreshByUser = async (userId) => {
   const { data } = await series.listByUser(userId)
-  const own = (data || []).filter(s => s.imdb_url)
+  const own = (data || []).filter(s => {
+    if (s.type === 'manga') return !!s.rss_url
+    return !!s.imdb_url
+  })
   let refreshed = 0
   let failed = 0
   for (const s of own) {
@@ -83,9 +134,9 @@ const startScheduler = ({ intervalMs = REFRESH_INTERVAL_MS, runImmediately = fal
   const loop = async () => {
     try {
       const res = await refreshAll()
-      console.log(`[imdb] refreshAll: refreshed=${res.refreshed} failed=${res.failed} total=${res.total}`)
+      console.log(`[feeds] refreshAll: refreshed=${res.refreshed} failed=${res.failed} total=${res.total}`)
     } catch (err) {
-      console.error('[imdb] scheduler error:', err)
+      console.error('[feeds] scheduler error:', err)
     }
   }
   if (runImmediately) loop()
@@ -104,6 +155,8 @@ const stopScheduler = () => {
 
 export default {
   refreshSeries,
+  refreshAnime,
+  refreshManga,
   refreshAll,
   refreshByUser,
   startScheduler,
