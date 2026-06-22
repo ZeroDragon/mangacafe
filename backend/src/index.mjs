@@ -236,22 +236,22 @@ app.get('/api/series/:id/feed', [verifyToken, getUser, resolveUserId], async (re
   res.json({ data: items, token: res.newToken })
 })
 
-// Marca un item como visto (valida ownership del item vía su serie).
+// Marca un item como visto (en cascada: también los anteriores). Ownership vía JOIN.
 app.post('/api/series/:id/items/:itemId/seen', [verifyToken, getUser, resolveUserId], async (req, res) => {
   const { data } = await series.getById(req.params.id, res.userId)
   if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
   const result = await seriesItem.markSeen(req.params.itemId, res.userId)
   if (result.error) return res.status(404).json({ error: 'Item not found or not owned' })
-  res.json({ success: true, token: res.newToken })
+  res.json({ success: true, updated: result.updated, token: res.newToken })
 })
 
-// Desmarca un item (visto -> pendiente). Ownership check igual que markSeen.
+// Desmarca un item (en cascada: también los posteriores). Ownership check igual que markSeen.
 app.delete('/api/series/:id/items/:itemId/seen', [verifyToken, getUser, resolveUserId], async (req, res) => {
   const { data } = await series.getById(req.params.id, res.userId)
   if (!data) return res.status(404).json({ error: 'Series not found or not owned' })
   const result = await seriesItem.markUnseen(req.params.itemId, res.userId)
   if (result.error) return res.status(404).json({ error: 'Item not found or not owned' })
-  res.json({ success: true, token: res.newToken })
+  res.json({ success: true, updated: result.updated, token: res.newToken })
 })
 
 // Marca todos los items pendientes de una serie como vistos.

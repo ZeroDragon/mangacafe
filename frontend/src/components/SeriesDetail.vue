@@ -133,13 +133,15 @@ export default {
       const id = this.$route.params.id
       try {
         if (it.seen) {
-          await api.delete(`/api/series/${id}/items/${it.id}/seen`)
-          it.seen = 0
-          this.$toast.success('Marked as pending')
+          const res = await api.delete(`/api/series/${id}/items/${it.id}/seen`)
+          await this.loadFeed()
+          const n = res.data.updated || 0
+          this.$toast.success(n > 1 ? `${n} items marked as pending` : 'Marked as pending')
         } else {
-          await api.post(`/api/series/${id}/items/${it.id}/seen`)
-          it.seen = 1
-          this.$toast.success('Marked as seen')
+          const res = await api.post(`/api/series/${id}/items/${it.id}/seen`)
+          await this.loadFeed()
+          const n = res.data.updated || 0
+          this.$toast.success(n > 1 ? `${n} items marked as seen` : 'Marked as seen')
         }
       } catch (e) {
         this.$toast.error('Could not update the item')

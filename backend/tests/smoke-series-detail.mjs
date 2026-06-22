@@ -129,6 +129,64 @@ const missUnseen = await request('delete', `/api/series/${s1.id}/items/99999999/
 if (missUnseen.status !== 404) fail(`esperaba 404 desmarcar item inexistente, vino ${missUnseen.status}`)
 log('  ownership + 404 desmarcar OK')
 
+// --- Cascada: marcar visto arrastra los anteriores ---
+log('Cascada seen: serie nueva con 5 items (1..5 por pub_date ASC)')
+const s2 = await series.create(uA.id, {
+  type: 'manga', name: 'Cascada', url: null, cover_url: null,
+  current_chapter: 0, rss_url: 'http://example.com/feed'
+})
+const t0 = 1700000000
+const s2items = []
+for (let i = 1; i <= 5; i++) {
+  s2items.push({ guid: `c${i}`, title: `Cap ${i}`, link: `http://x/${i}`, pub_date: t0 + i * 1000 })
+}
+await seriesItem.insertMany(s2.id, s2items)
+const s2feed = (await request('get', `/api/series/${s2.id}/feed`, null, tokenA)).data.data
+
+log('  Marcar el Cap 3 como visto -> Caps 1,2,3 vistos; 4,5 pendientes')
+const cap3 = s2feed.find(i => i.guid === 'c3')
+const seenCasc = await request('post', `/api/series/${s2.id}/items/${cap3.id}/seen`, null, tokenA)
+if (seenCasc.status !== 200) fail(`status ${seenCasc.status}`)
+if (seenCasc.data.updated !== 3) fail(`esperaba updated=3 (1,2,3), vino ${seenCasc.data.updated}`)
+const s2pend1 = (await request('get', `/api/series/${s2.id}/feed?pending=1`, null, tokenA)).data.data
+if (s2pend1.length !== 2) fail(`esperaba 2 pendientes (4,5), hay ${s2pend1.length}`)
+if (s2pend1.some(i => ['c1', 'c2', 'c3'].includes(i.guid))) fail('cascada seen no debería dejar 1-3 pendientes')
+log('  cascada seen OK (1,2,3 vistos | 4,5 pendientes)')
+
+log('  Marcar el Cap 2 como no visto -> Caps 2,3,4,5 pendientes; Cap 1 sigue visto')
+const cap2 = s2feed.find(i => i.guid === 'c2')
+const unseenCasc = await request('delete', `/api/series/${s2.id}/items/${cap2.id}/seen`, null, tokenA)
+if (unseenCasc.status !== 200) fail(`status ${unseenCasc.status}`)
+if (unseenCasc.data.updated !== 2) fail(`esperaba updated=2 (2,3 cambian; 4,5 ya eran pendientes), vino ${unseenCasc.data.updated}`)
+const s2pend2 = (await request('get', `/api/series/${s2.id}/feed?pending=1`, null, tokenA)).data.data
+if (s2pend2.length !== 4) fail(`esperaba 4 pendientes (2,3,4,5), hay ${s2pend2.length}`)
+if (s2pend2.some(i => i.guid === 'c1')) fail('Cap 1 debería seguir visto')
+if (!s2pend2.some(i => i.guid === 'c2')) fail('Cap 2 debería volver a pendiente')
+log('  cascada unseen OK (1 visto | 2,3,4,5 pendientes)')
+
+log('  Marcar el Cap 5 (último) como visto -> todos vistos')
+const cap5 = s2feed.find(i => i.guid === 'c5')
+const seenLast = await request('post', `/api/series/${s2.id}/items/${cap5.id}/seen`, null, tokenA)
+if (seenLast.data.updated !== 4) fail(`esperaba updated=4 (2,3,4,5; el 1 ya estaba), vino ${seenLast.data.updated}`)
+const s2pend3 = (await request('get', `/api/series/${s2.id}/feed?pending=1`, null, tokenA)).data.data
+if (s2pend3.length !== 0) fail(`esperaba 0 pendientes, hay ${s2pend3.length}`)
+log('  cascada seen hasta el último OK')
+
+log('  Desmarcar el Cap 1 (primero) -> todos quedan pendientes')
+const cap1 = s2feed.find(i => i.guid === 'c1')
+const unseenFirst = await request('delete', `/api/series/${s2.id}/items/${cap1.id}/seen`, null, tokenA)
+if (unseenFirst.data.updated !== 5) fail(`esperaba updated=5 (todos), vino ${unseenFirst.data.updated}`)
+const s2pend4 = (await request('get', `/api/series/${s2.id}/feed?pending=1`, null, tokenA)).data.data
+if (s2pend4.length !== 5) fail(`esperaba 5 pendientes, hay ${s2pend4.length}`)
+log('  cascada unseen desde el primero OK')
+
+log('  Marcar item YA visto como visto -> updated=0, success (no 404)')
+await request('post', `/api/series/${s2.id}/items/${cap3.id}/seen`, null, tokenA) // 1,2,3 vistos
+const reSeen2 = await request('post', `/api/series/${s2.id}/items/${cap3.id}/seen`, null, tokenA) // ya visto
+if (reSeen2.status !== 200) fail(`marcar item ya-visto debería ser 200, vino ${reSeen2.status}`)
+if (reSeen2.data.updated !== 0) fail(`updated debería ser 0 (ya estaba visto), vino ${reSeen2.data.updated}`)
+log('  idempotencia seen OK (updated=0, no 404)')
+
 // Restaurar estado: remarcar el 101 como visto para que el seen-all siguiente vea 2 pendientes
 await request('post', `/api/series/${s1.id}/items/${item101.id}/seen`, null, tokenA)
 

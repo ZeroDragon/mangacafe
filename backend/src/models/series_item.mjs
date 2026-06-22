@@ -109,43 +109,82 @@ const dashboardByUser = (userId) => {
   })
 }
 
+// Marca un item como visto y, en cascada, todos los anteriores (pub_date menor
+// o igual → capítulos/episodios previos). Tiene sentido: si llegaste hasta el
+// capítulo N, los N-1 .. 1 ya están leídos. Valida ownership vía JOIN con series.
 const markSeen = (itemId, userId) => {
   return new Promise(resolve => {
-    // Valida ownership vía JOIN con series (multiusuario, decisión 2)
-    db.run(
-      `UPDATE series_items
-       SET seen = 1
-       WHERE id = ?
-         AND series_id IN (SELECT id FROM series WHERE user_id = ?)`,
+    db.get(
+      `SELECT i.id FROM series_items i
+       JOIN series s ON s.id = i.series_id
+       WHERE i.id = ? AND s.user_id = ?`,
       [itemId, userId],
-      function (err) {
+      (err, row) => {
         if (err) {
           console.error(err)
           return resolve({ error: err })
         }
-        if (this.changes === 0) return resolve({ error: 'Item not found or not owned' })
-        resolve({ success: true })
+        if (!row) return resolve({ error: 'Item not found or not owned' })
+        db.run(
+          `UPDATE series_items
+           SET seen = 1
+           WHERE series_id = (SELECT series_id FROM series_items WHERE id = ?)
+             AND series_id IN (SELECT id FROM series WHERE user_id = ?)
+             AND seen = 0
+             AND (COALESCE(pub_date, 0), created_at, id) <= (
+               SELECT COALESCE(pub_date, 0), created_at, id
+               FROM series_items WHERE id = ?
+             )`,
+          [itemId, userId, itemId],
+          function (err) {
+            if (err) {
+              console.error(err)
+              return resolve({ error: err })
+            }
+            resolve({ success: true, updated: this.changes })
+          }
+        )
       }
     )
   })
 }
 
-// Desmarca un item (visto -> pendiente). Mismo ownership check que markSeen.
+// Desmarca un item (visto -> pendiente) y, en cascada, todos los posteriores
+// (pub_date mayor o igual → capítulos/episodios siguientes). Tiene sentido: si
+// marcás el capítulo N como no leído, no pueden estar leídos los N+1 .. M.
+// Mismo ownership check que markSeen.
 const markUnseen = (itemId, userId) => {
   return new Promise(resolve => {
-    db.run(
-      `UPDATE series_items
-       SET seen = 0
-       WHERE id = ?
-         AND series_id IN (SELECT id FROM series WHERE user_id = ?)`,
+    db.get(
+      `SELECT i.id FROM series_items i
+       JOIN series s ON s.id = i.series_id
+       WHERE i.id = ? AND s.user_id = ?`,
       [itemId, userId],
-      function (err) {
+      (err, row) => {
         if (err) {
           console.error(err)
           return resolve({ error: err })
         }
-        if (this.changes === 0) return resolve({ error: 'Item not found or not owned' })
-        resolve({ success: true })
+        if (!row) return resolve({ error: 'Item not found or not owned' })
+        db.run(
+          `UPDATE series_items
+           SET seen = 0
+           WHERE series_id = (SELECT series_id FROM series_items WHERE id = ?)
+             AND series_id IN (SELECT id FROM series WHERE user_id = ?)
+             AND seen = 1
+             AND (COALESCE(pub_date, 0), created_at, id) >= (
+               SELECT COALESCE(pub_date, 0), created_at, id
+               FROM series_items WHERE id = ?
+             )`,
+          [itemId, userId, itemId],
+          function (err) {
+            if (err) {
+              console.error(err)
+              return resolve({ error: err })
+            }
+            resolve({ success: true, updated: this.changes })
+          }
+        )
       }
     )
   })
