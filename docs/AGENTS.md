@@ -58,6 +58,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 8. **No reintroducir:** Telegram, MangaDex, subida de archivos, `multer`, `__BOT_NAME__`, ni la tabla `user_data`.
 9. **Testear después de cada cambio:** backend `npm start` desde `backend/`; frontend `npm run build` o `npm run dev` desde `frontend/`. Hay un `.env` temporal en el root (gitignored) para dev local.
 10. **Commits:** solo cuando el usuario lo pida explícitamente.
+11. **Atribuciones en commits:** **NUNCA** agregar líneas de atribución tipo `💘 Generated with Crush`, `Assisted-by: ... via Crush <crush@charm.land>`, ni ninguna firma/co-authored-by de la herramienta o del modelo. El mensaje debe contener solo el subject + body del cambio. Si se reescribe historial, omitir las atribuciones existentes.
 
 ---
 
