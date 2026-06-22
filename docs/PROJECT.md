@@ -30,6 +30,7 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 7. **Errores de IMDB:** visibles en el dashboard.
 8. **Feed según `type`:** anime → URL de IMDB (`imdb_url`); manga → URL de RSS/Atom (`rss_url`). Un campo u otro, nunca ambos (Épica 9).
 9. **Indicador de progreso:** el "último leído/visto" es el `title` del último item visto en `series.last_read` (string, nullable), recalculado solo al marcar items visto/no-visto. `NULL` ⇒ "No data". Se elimina `current_chapter` (dato zombie) (Épica 10).
+10. **Reels como tabla aparte:** los reels de FB se guardan en `reels` (no en `series`); marcar visto es por-item sin cascada; watch-later / ToDo; un único card fijo en el dashboard (Épica 11).
 
 ## Stack conservado
 
@@ -52,6 +53,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 8 | Deploy e infra | `[DONE]` | [epics/08-deploy.md](epics/08-deploy.md) |
 | 9 | Motor RSS para mangas | `[DONE]` | [epics/09-manga-rss.md](epics/09-manga-rss.md) |
 | 10 | Indicador de "último leído" como string | `[DONE]` | [epics/10-last-read-string.md](epics/10-last-read-string.md) |
+| 11 | Soporte para Facebook Reels | `[PENDING]` | [epics/11-facebook-reels.md](epics/11-facebook-reels.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 
