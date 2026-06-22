@@ -23,7 +23,7 @@ Conservar:
 - `createTable()` helper y conexión SQLite
 - Modelo `user` (signup/login)
 - Vite config con `dotPathFixPlugin` + `define __API__`
-- `dotenv.mjs`, `ecosystem.config.js`, `deploy.yml`, `vite.config.js`
+- `dotenv.mjs`, `ecosystem.config.cjs`, `deploy.yml`, `vite.config.js`
 - Estilos Stylus y assets públicos
 
 ---

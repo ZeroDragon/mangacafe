@@ -116,7 +116,7 @@ SECRET string-aleatorio
 
 ## Infra
 
-### PM2 (`backend/ecosystem.config.js`)
+### PM2 (`backend/ecosystem.config.cjs`)
 App `mangacafe`, 1 instancia, `max_memory_restart 100M`, `cron_restart: '0 0 * * *'` (diario). **La Épica 8 lo cambia a cada 6h** o lo reemplaza por un scheduler interno.
 
 ### Deploy (`.github/workflows/deploy.yml`)

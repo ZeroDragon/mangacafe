@@ -25,7 +25,7 @@
 ### Scheduler RSS en producción
 - Implementar el refresco cada 6h (decisión 5):
   - **Opción preferida:** scheduler interno con `setInterval(6h)` o `node-cron` arrancando al boot, más un refresh inicial.
-  - Ajustar `ecosystem.config.js`: si se confía en `cron_restart`, cambiar a `'0 */6 * * *'`; si hay scheduler interno, dejar el restart diario solo como saneamiento de memoria.
+  - Ajustar `ecosystem.config.cjs`: si se confía en `cron_restart`, cambiar a `'0 */6 * * *'`; si hay scheduler interno, dejar el restart diario solo como saneamiento de memoria.
 
 ### Pipeline (`.github/workflows/deploy.yml`)
 - Ya hace scp + ssh + `npm i` + `vite build` + `pm2 restart`.

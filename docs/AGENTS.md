@@ -38,7 +38,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 
 - **Backend:** Node.js (ESM, `.mjs`) + Express 4 + SQLite3 (driver `sqlite3` con callbacks) + Pug (registrado como view engine) + JWT custom (`backend/src/auth.mjs`).
 - **Frontend:** Vue 3 (build runtime+compiler) + Vue Router 4 + Vite 5 + Stylus + Pug (en `<template lang="pug">` de los SFCs). Sin Vuex/Pinia.
-- **Infra:** PM2 (`backend/ecosystem.config.js`) + GitHub Actions (`.github/workflows/deploy.yml`, manual `workflow_dispatch`).
+- **Infra:** PM2 (`backend/ecosystem.config.cjs`) + GitHub Actions (`.github/workflows/deploy.yml`, manual `workflow_dispatch`).
 - **Env:** loader custom en `dotenv.mjs` (formato `KEY value` con **un solo espacio** como separador).
 
 ### Qué se eliminó en la Épica 0
@@ -87,7 +87,7 @@ cd frontend && npm install && API=http://localhost:3000 npm run dev
 
 ```
 backend/
-  ecosystem.config.js          # PM2: app "mangacafe", cron_restart diario (ajustar a 6h en Épica 8)
+  ecosystem.config.cjs          # PM2: app "mangacafe", cron_restart diario (ajustar a 6h en Épica 8)
   package.json                 # deps: express, sqlite3, pug, bcrypt, axios
   src/
     index.mjs                  # Express app + rutas + middlewares verifyToken/getUser (exportados)
