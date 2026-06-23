@@ -31,6 +31,7 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 8. **Feed según `type`:** anime → URL de IMDB (`imdb_url`); manga → URL de RSS/Atom (`rss_url`). Un campo u otro, nunca ambos (Épica 9).
 9. **Indicador de progreso:** el "último leído/visto" es el `title` del último item visto en `series.last_read` (string, nullable), recalculado solo al marcar items visto/no-visto. `NULL` ⇒ "No data". Se elimina `current_chapter` (dato zombie) (Épica 10).
 10. **Reels como tabla aparte:** los reels de FB se guardan en `reels` (no en `series`); marcar visto es por-item sin cascada; watch-later / ToDo; un único card fijo en el dashboard (Épica 11).
+11. **`rss_url` acepta RSS o HTML:** el campo `series.rss_url` de un manga admite un feed RSS/Atom o la URL de la página de la serie en un sitio soportado (comivex.com al iniciar). El refresher detecta el tipo automáticamente y rutea al parser o al scraper del proveedor. Sin columna nueva: detección por contenido/host (Épica 12).
 
 ## Stack conservado
 
@@ -54,6 +55,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 9 | Motor RSS para mangas | `[DONE]` | [epics/09-manga-rss.md](epics/09-manga-rss.md) |
 | 10 | Indicador de "último leído" como string | `[DONE]` | [epics/10-last-read-string.md](epics/10-last-read-string.md) |
 | 11 | Soporte para Facebook Reels | `[PENDING]` | [epics/11-facebook-reels.md](epics/11-facebook-reels.md) |
+| 12 | Auto-detección de fuente (RSS vs HTML scraper) | `[PENDING]` | [epics/12-source-autodetect.md](epics/12-source-autodetect.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 

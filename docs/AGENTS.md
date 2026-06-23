@@ -33,6 +33,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 | 8 | Feed según `type` | **anime → URL de IMDB** (`imdb_url`); **manga → URL de RSS/Atom** (`rss_url`). Un campo u otro, nunca ambos (Épica 9) |
 | 9 | Indicador de progreso | El "último leído/visto" es el **`title` del último item visto** guardado en `series.last_read` (**string, nullable**), no un número de capítulo manual. Se recalcula solo al marcar items visto/no-visto. `NULL` ⇒ se muestra como **"No data"**. `series.current_chapter` se elimina por completo (dato zombie) (Épica 10) |
 | 10 | Reels como tabla aparte | Los reels de FB se guardan en `reels` (no en `series`). Marcar visto es **por-item sin cascada**. Funciona como watch-later / ToDo: pendientes arriba, vistos en sección separada. El dashboard muestra un único card con thumbnail fijo (Épica 11) |
+| 11 | `rss_url` acepta RSS **o** HTML | El campo `series.rss_url` de un manga admite (a) un feed RSS/Atom o (b) la URL de la página de la serie en un sitio soportado (comivex.com al iniciar). El refresher detecta el tipo automáticamente y rutea al parser o al scraper del proveedor. **No** se agrega una columna nueva: la detección es por contenido/host, no por un flag en la DB (Épica 12) |
 
 ---
 
