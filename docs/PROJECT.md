@@ -61,7 +61,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 12 | Auto-detección de fuente (RSS vs HTML scraper) | `[DONE]` | [epics/12-source-autodetect.md](epics/12-source-autodetect.md) |
 | 13 | Reorganización del header + renombrado de tipos | `[DONE]` | [epics/13-header-menu-and-type-rename.md](epics/13-header-menu-and-type-rename.md) |
 | 14 | Scraping genérico con config de usuario | `[DONE]` | [epics/14-custom-source-config.md](epics/14-custom-source-config.md) |
-| 15 | Protección de signup con mCaptcha (PoW) | `[PENDING]` | [epics/15-mcaptcha-signup.md](epics/15-mcaptcha-signup.md) |
+| 15 | Protección de signup con mCaptcha (PoW) | `[DONE]` | [epics/15-mcaptcha-signup.md](epics/15-mcaptcha-signup.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 

@@ -16,13 +16,23 @@
           type="password"
           :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
           required)
-      button(type="submit" :disabled="loading")
+      .mcaptcha-widget(v-if="mode === 'signup' && mcaptchaConfigured" ref="mcaptchaWidget")
+        #mcaptcha__widget-container
+      button(
+        type="submit"
+        :disabled="loading || (mode === 'signup' && !mcaptchaToken)")
         | {{ mode === 'login' ? 'Sign in' : 'Sign up' }}
       p.error(v-if="error") {{ error }}
+      p.error(v-if="mode === 'signup' && !mcaptchaConfigured")
+        | Signup is not available (captcha not configured).
 </template>
 
 <script>
 import api from '../api.js'
+import Widget from '@mcaptcha/vanilla-glue'
+
+const MCAPTCHA_SITE_KEY = __MCAPTCHA_SITE_KEY__
+const MCAPTCHA_INSTANCE = __MCAPTCHA_INSTANCE__
 
 export default {
   name: 'Login',
@@ -32,27 +42,70 @@ export default {
       username: '',
       password: '',
       loading: false,
-      error: ''
+      error: '',
+      mcaptchaToken: '',
+      mcaptchaPoll: null
     }
   },
-  methods: {
-    setMode (mode) {
-      this.mode = mode
+  computed: {
+    mcaptchaConfigured () { return !!MCAPTCHA_SITE_KEY }
+  },
+  watch: {
+    mode (next) {
+      // Al cambiar a signup (re)inicializamos el widget; al volver a login limpiamos.
+      this.mcaptchaToken = ''
       this.error = ''
+      this.stopPolling()
+      if (next === 'signup') this.$nextTick(() => this.mountMcaptcha())
+    }
+  },
+  beforeUnmount () { this.stopPolling() },
+  methods: {
+    setMode (mode) { this.mode = mode },
+    mountMcaptcha () {
+      if (!MCAPTCHA_SITE_KEY) return
+      const container = document.getElementById('mcaptcha__widget-container')
+      if (!container) return
+      // Limpiar instancias previas (iframe + input) para no duplicar al re-montar.
+      container.innerHTML = ''
+      try {
+        new Widget({
+          siteKey: { key: MCAPTCHA_SITE_KEY, instanceUrl: new URL(MCAPTCHA_INSTANCE) }
+        })
+      } catch (e) {
+        console.error('[mcaptcha] mount failed:', e)
+        return
+      }
+      this.startPolling()
+    },
+    startPolling () {
+      this.stopPolling()
+      // El widget escribe el token en un input oculto vía postMessage; no hay
+      // callback público, así que lo sondeamos para habilitar el botón.
+      this.mcaptchaPoll = setInterval(() => {
+        const el = document.getElementById('mcaptcha__token')
+        const val = el && el.value
+        if (val && val !== this.mcaptchaToken) this.mcaptchaToken = val
+      }, 250)
+    },
+    stopPolling () {
+      if (this.mcaptchaPoll) { clearInterval(this.mcaptchaPoll); this.mcaptchaPoll = null }
+    },
+    resetCaptcha () {
+      // El token es de un solo uso: tras un fallo hay que resolver otro.
+      this.mcaptchaToken = ''
+      this.$nextTick(() => this.mountMcaptcha())
     },
     async submit () {
       this.loading = true
       this.error = ''
       try {
         if (this.mode === 'signup') {
-          const res = await api.post('/api/signup', {
+          await api.post('/api/signup', {
             username: this.username,
-            password: this.password
+            password: this.password,
+            mcaptcha_token: this.mcaptchaToken
           })
-          if (res.data.error) {
-            this.error = res.data.error
-            return
-          }
         }
         await api.post('/api/login', {
           username: this.username,
@@ -61,6 +114,7 @@ export default {
         this.$router.push('/dashboard')
       } catch (e) {
         this.error = (e.response && e.response.data && e.response.data.error) || 'Unexpected error'
+        if (this.mode === 'signup') this.resetCaptcha()
       } finally {
         this.loading = false
       }
@@ -119,6 +173,14 @@ input
   &:focus
     outline none
     border-color var(--primary)
+.mcaptcha-widget
+  min-height 70px
+  display flex
+  justify-content center
+  margin -2px 0
+#mcaptcha__widget-container
+  width 100%
+  min-height 64px
 button[type="submit"]
   margin-top 4px
   background var(--primary)

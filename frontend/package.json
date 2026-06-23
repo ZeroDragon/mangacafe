@@ -16,5 +16,8 @@
     "vite": "^5.3.4",
     "vue": "^3.4.31",
     "vue-router": "^4.4.0"
+  },
+  "dependencies": {
+    "@mcaptcha/vanilla-glue": "^0.1.0-alpha-3"
   }
 }

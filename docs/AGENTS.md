@@ -107,6 +107,7 @@ backend/
   src/
     index.mjs                  # Express app + rutas + middlewares verifyToken/getUser/resolveUserId (exportados)
     auth.mjs                   # JWT custom (HMAC-SHA256, expira 1 año)
+    mcaptcha.mjs               # Épica 15: validador PoW de mCaptcha (verifyToken + isMcaptchaConfigured, fail-closed)
     refresher.mjs              # Scheduler de feeds (6h) + refreshSeries/refreshAll/refreshByUser (dispatch por type; manga vía sources.fetchItems)
     imdb.mjs                   # Scraper de IMDB vía GraphQL interno → items [{guid,title,link,pub_date}]
     rss.mjs                    # Parser RSS 2.0 / Atom → items (xml2js)
@@ -124,6 +125,7 @@ backend/
       reel.mjs                 # CRUD reels (watch-later): sin cascada, sin last_read, pendingCountByUser
   tests/                       # smoke tests (uno por épica); cada uno levanta su propio server en puerto efímero
     smoke-auth.mjs             # Épica 2
+    smoke-captcha.mjs          # Épica 15 (validador mCaptcha + handler /api/signup, fail-closed)
     smoke-data-model.mjs       # Épica 1
     smoke-series-crud.mjs      # Épica 3
     smoke-imdb-engine.mjs      # Épica 4
@@ -147,7 +149,7 @@ frontend/
     toast.js                   # plugin $toast + manager {info, success, error, dismiss}
     styles.styl                # variables CSS globales (--background --foreground --primary --danger)
     components/
-      Login.vue                # form toggle login/signup (Épica 2)
+      Login.vue                # form toggle login/signup; signup gateado por widget mCaptcha PoW (Épica 2, extendido en 15)
       AppHeader.vue            # nav: Dashboard / Series / Reels + botón "New" + menú de usuario (dropdown con Sync Crunchyroll + Logout) (Épica 2, reorganizado en 13)
       Loader.vue               # spinner + esqueleto reutilizable
       Toasts.vue               # contenedor de toasts (consume toast.js)
@@ -163,7 +165,7 @@ frontend/
     reel-thumb.png             # thumbnail fijo del card y los items de Reels (Épica 11)
 
 dotenv.mjs                     # loader custom: formato "KEY value" separado por UN espacio
-env_example                    # documenta vars: PORT DB_PATH API SECRET IMDB_* RSS_* COMIVEX_* CUSTOM_SOURCE_* REEL_* BUILD_OUT_DIR
+env_example                    # documenta vars: PORT DB_PATH API SECRET IMDB_* RSS_* COMIVEX_* CUSTOM_SOURCE_* MCAPTCHA_* REEL_* BUILD_OUT_DIR
 
 docs/
   AGENTS.md                    # ESTE ARCHIVO (contexto + reglas)
@@ -293,7 +295,7 @@ export default {
 
 ## Estado actual y próximos pasos
 
-- **Completadas:** Épicas 0 a 14 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels, auto-detección de fuente RSS vs HTML scraper, header menu + renombrado de tipos, scraping genérico con config de usuario).
-- **Pendientes:** Épica 15 (protección de signup con mCaptcha — `docs/epics/15-mcaptcha-signup.md`).
+- **Completadas:** Épicas 0 a 15 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels, auto-detección de fuente RSS vs HTML scraper, header menu + renombrado de tipos, scraping genérico con config de usuario, protección de signup con mCaptcha PoW).
+- **Pendientes:** — (backlog abierto para nuevas épicas).
 
 Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una. Antes de tocar código, **lee la sección *Patrones del código* de este archivo** para no redescubrir los molds.

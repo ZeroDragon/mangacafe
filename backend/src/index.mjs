@@ -6,6 +6,7 @@ import seriesItem from './models/series_item.mjs'
 import reel from './models/reel.mjs'
 import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
+import mcaptcha from './mcaptcha.mjs'
 import * as crunchyroll from './crunchyroll.mjs'
 import { CUSTOM_ADAPTER } from './sources/custom.mjs'
 import { ready as dbReady } from './models/db.mjs'
@@ -26,8 +27,16 @@ app.use((_req, res, next) => {
 })
 
 app.post('/api/signup', async (req, res) => {
-  const { username, password } = req.body
-  res.json(await user.signup(username, password))
+  // Fail-closed: si mCaptcha no está configurado, no abrimos el signup.
+  if (!mcaptcha.isMcaptchaConfigured()) {
+    return res.status(503).json({ error: 'Signup disabled (captcha not configured)' })
+  }
+  const { username, password, mcaptcha_token } = req.body
+  const ok = await mcaptcha.verifyToken(mcaptcha_token)
+  if (!ok) return res.status(400).json({ error: 'Captcha verification failed' })
+  const result = await user.signup(username, password)
+  if (result.error) return res.status(400).json({ error: result.error })
+  res.json(result)
 })
 
 app.post('/api/login', async (req, res) => {

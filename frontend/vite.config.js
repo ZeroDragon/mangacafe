@@ -26,7 +26,9 @@ export default (({ mode }) => {
   return defineConfig({
     plugins: [vue(), dotPathFixPlugin()],
     define: {
-      '__API__': `"${env.API}"`
+      '__API__': `"${env.API}"`,
+      '__MCAPTCHA_SITE_KEY__': JSON.stringify(env.MCAPTCHA_SITE_KEY || ''),
+      '__MCAPTCHA_INSTANCE__': JSON.stringify(env.MCAPTCHA_INSTANCE || 'https://demo.mcaptcha.org')
     },
     build: {
       outDir: env.BUILD_OUT_DIR,

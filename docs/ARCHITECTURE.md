@@ -16,10 +16,10 @@ Detalle técnico del scaffolding conservado tras la Épica 0 y extendido por las
 - **Arranque:** espera `dbReady.finally(...)` para iniciar el scheduler IMDB (evita race condition con tablas inexistentes) y luego `app.listen(PORT)`.
 - **Smoke tests:** el módulo detecta `process.argv[1].includes('tests/')` y NO llama a `app.listen` (los tests levantan su propio servidor efímero con `http.createServer(app)`).
 
-### Rutas actuales (post-Épica 11)
+### Rutas actuales (post-Épica 15)
 - `GET /api/` — health.
-- `POST /api/signup` — `{ username, password }` → `{ success }` o `{ error }`.
-- `POST /api/login` — `{ username, password }` → `{ success, token }` o 401 `{ error }`.
+- `POST /api/signup` — `{ username, password, mcaptcha_token }` → `{ success }` o `{ error }`. **Épica 15:** valida `mcaptcha_token` contra mCaptcha antes de crear la cuenta. **Fail-closed**: 503 si `MCAPTCHA_SECRET_KEY` no está configurada; 400 si el captcha falla (token inválido/ausente/timeout) o si `user.signup` rechaza (usuario duplicado, password débil).
+- `POST /api/login` — `{ username, password }` → `{ success, token }` o 401 `{ error }`. **No** requiere captcha (la protección anti-bot es sólo para crear cuentas).
 - `GET /api/me` (protegida) → `{ username, token }` (token rotado).
 
 **Series (Épica 3):**
@@ -73,6 +73,13 @@ JWT custom (sin librería externa). Token = `<base64url payload>.<HMAC-SHA256>`.
 - Expiración por defecto: **1 año**.
 - Métodos: `generateToken(data)`, `verifyToken(token)`, `refreshToken(token)`, `parseToken(token)`.
 - Firma con `crypto.createHmac('sha256', process.env.SECRET)`.
+
+### mCaptcha (`src/mcaptcha.mjs`) — Épica 15
+Validador de tokens proof-of-work de mCaptcha para gatear `POST /api/signup`. Sin DB, stateless.
+- `isMcaptchaConfigured()` → `bool`: true si `MCAPTCHA_SECRET_KEY` y `MCAPTCHA_SITE_KEY` están seteadas. Usado por el handler para el fail-closed (503).
+- `verifyToken(token)` → `Promise<boolean>`: POSTea `{ token, secret, sitekey }` a `MCAPTCHA_VERIFY_URL` (default `https://demo.mcaptcha.org/api/v1/pow/siteverify`) y devuelve `!!data.valid`. **Fail-closed**: `false` si no está configurado, si el token es vacío/non-string, o si hay error de red/timeout (no abre el signup ante un outage).
+- Env vars: `MCAPTCHA_SECRET_KEY` (server-side), `MCAPTCHA_SITE_KEY`, `MCAPTCHA_VERIFY_URL`, `MCAPTCHA_TIMEOUT` (default 8000ms).
+- Los tests lo mockean reasignando `mcaptcha.verifyToken` / `mcaptcha.isMcaptchaConfigured` sobre el default export (patrón usado en `smoke-captcha.mjs` y `smoke-auth.mjs`).
 
 ### DB (`src/models/db.mjs`)
 - `new sqlite3.Database(process.env.DB_PATH)` — driver con callbacks.
@@ -180,9 +187,9 @@ Instancia axios con `baseURL = __API__`. Interceptores:
 
 ### Vite (`vite.config.js`)
 - Plugins: `@vitejs/plugin-vue` + `dotPathFixPlugin` (SPA fallback: cualquier path no `/@`, no `/api/` y que no exista en `public/` se reescribe a `/`).
-- `define`: `__API__` → `env.API` (string inyectada en build).
+- `define`: `__API__` → `env.API`; `__MCAPTCHA_SITE_KEY__` y `__MCAPTCHA_INSTANCE__` (Épica 15, inyectados en el widget de Login.vue).
 - `build.outDir` = `env.BUILD_OUT_DIR`.
-- Carga env con `../dotenv.mjs`.
+- Carga env con `loadEnv` de Vite (no el `dotenv.mjs` custom) — `env.API` y `env.MCAPTCHA_*` se resuelven desde el `.env` del root.
 - **No hay `server.proxy`**: el frontend golpea el backend directo por CORS.
 
 ### Estilos (`src/styles.styl`)
@@ -223,6 +230,11 @@ COMIVEX_TIMEOUT 15000           # Épica 12
 CUSTOM_SOURCE_USER_AGENT "..."  # Épica 14 (generic source-config scraper)
 CUSTOM_SOURCE_TIMEOUT 15000     # Épica 14
 BUILD_OUT_DIR dist              # o /srv/www/mangacafe.vip en prod
+MCAPTCHA_SITE_KEY "..."         # Épica 15 (público, inyectado al frontend)
+MCAPTCHA_SECRET_KEY "..."       # Épica 15 (server-side, fail-closed si falta)
+MCAPTCHA_INSTANCE "..."         # Épica 15 (opcional, default https://demo.mcaptcha.org)
+MCAPTCHA_VERIFY_URL "..."       # Épica 15 (opcional, default .../api/v1/pow/siteverify)
+MCAPTCHA_TIMEOUT 8000           # Épica 15 (opcional, ms para siteverify)
 ```
 
 `env_example` documenta todas las variables con descripciones. Variables eliminadas en Épica 0: `TELEGRAM_TOKEN`, `TELEGRAM_BOT`, `ORIGIN`. **Cada var nueva DEBE agregarse a `env_example`** (regla 13).

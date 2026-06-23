@@ -5,8 +5,14 @@ import db, { ready } from '../src/models/db.mjs'
 import user from '../src/models/user.mjs'
 import Auth from '../src/auth.mjs'
 import bcrypt from 'bcrypt'
+import mcaptcha from '../src/mcaptcha.mjs'
 
 await ready // garantiza que el schema está creado antes de queryar
+
+// Épica 15: /api/signup ahora exige mcaptcha_token. Este smoke opera a nivel
+// de modelo (user.signup directo), pero importar index.mjs como side-effect
+// registraría el handler. Bypasamos el captcha por si se invoca vía HTTP.
+mcaptcha.verifyToken = async () => true
 
 const log = (...a) => console.log('•', ...a)
 const fail = (...a) => { console.error('✗', ...a); process.exitCode = 1 }
