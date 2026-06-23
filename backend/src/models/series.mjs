@@ -2,15 +2,16 @@ import db from './db.mjs'
 
 const ALLOWED_FIELDS = [
   'type', 'name', 'url', 'cover_url', 'last_read',
-  'imdb_url', 'rss_url', 'last_known_total', 'last_checked_at', 'last_error'
+  'imdb_url', 'rss_url', 'source_config',
+  'last_known_total', 'last_checked_at', 'last_error'
 ]
 
-const create = (userId, { type, name, url, cover_url, last_read, imdb_url, rss_url }) => {
+const create = (userId, { type, name, url, cover_url, last_read, imdb_url, rss_url, source_config }) => {
   return new Promise(resolve => {
     db.run(
-      `INSERT INTO series (user_id, type, name, url, cover_url, last_read, imdb_url, rss_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, type, name, url, cover_url, last_read || null, imdb_url || null, rss_url || null],
+      `INSERT INTO series (user_id, type, name, url, cover_url, last_read, imdb_url, rss_url, source_config)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userId, type, name, url, cover_url, last_read || null, imdb_url || null, rss_url || null, source_config || null],
       function (err) {
         if (err) {
           console.error(err)

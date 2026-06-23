@@ -7,6 +7,7 @@
 //     - comivex mini-servidor (sirve fixture HTML) produce items con
 //       guid `comivex:1295:N` vía COMIVEX_ADAPTER.
 //     - host desconocido devolviendo HTML → lanza "unsupported source".
+//   - Épica 14: CUSTOM_ADAPTER (extract + normalize + errores + reverse).
 // Correr desde backend/: DB_PATH=./test.sqlite node tests/smoke-sources.mjs
 import '../../dotenv.mjs'
 import http from 'http'
@@ -16,6 +17,7 @@ import { dirname, join } from 'path'
 import { detectSource, fetchItems } from '../src/sources/index.mjs'
 import { COMIVEX_ADAPTER } from '../src/sources/comivex.mjs'
 import { RSS_ADAPTER } from '../src/sources/rss.mjs'
+import { CUSTOM_ADAPTER, extractItems, normalizeItems } from '../src/sources/custom.mjs'
 
 const log = (...a) => console.log('•', ...a)
 const fail = (...a) => { console.error('✗', ...a); process.exitCode = 1 }
@@ -23,6 +25,7 @@ const assert = (cond, msg) => cond ? null : fail(msg)
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURE = await readFile(join(__dirname, 'fixtures', 'comivex-1295.html'), 'utf8')
+const WITCH_FIXTURE = await readFile(join(__dirname, 'fixtures', 'witchhatatelier.html'), 'utf8')
 
 // ============ detectSource (unidad) ============
 log('detectSource: host comivex.com → adapter comivex')
@@ -218,8 +221,147 @@ log('fetchItems: HTTP 404 → throw')
   log('  404 OK')
 }
 
+// ============ Épica 14: CUSTOM_ADAPTER ============
+
+log('extractItems: fixture witchhatatelier con config de referencia → 112 items')
+{
+  const config = { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: true }
+  const raw = extractItems(WITCH_FIXTURE, config)
+  assert(raw.length === 112, `esperaba 112 items, hay ${raw.length}`)
+  // Con reverse:true, result[0] debe ser Chapter 1 (más viejo), result[N-1] Chapter 97.
+  assert(/Chapter 1$/.test(raw[0].label), `label[0] con reverse esperaba Chapter 1, vino "${raw[0].label}"`)
+  assert(/Chapter 97/.test(raw[raw.length - 1].label), `label[last] con reverse esperaba Chapter 97, vino "${raw[raw.length - 1].label}"`)
+  assert(raw[0].url.startsWith('http'), `url[0] debería ser absoluta: ${raw[0].url}`)
+  log(`  extractItems OK: ${raw.length} items oldest→newest (reverse)`)
+}
+
+log('extractItems: sin reverse → 112 items en orden newest-first (como vienen en el DOM)')
+{
+  const config = { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: false }
+  const raw = extractItems(WITCH_FIXTURE, config)
+  assert(raw.length === 112, `esperaba 112 items, hay ${raw.length}`)
+  assert(/Chapter 97/.test(raw[0].label), `label[0] sin reverse esperaba Chapter 97, vino "${raw[0].label}"`)
+  log('  extractItems sin reverse OK (newest-first)')
+}
+
+log('extractItems: selector sin matches → throw claro')
+{
+  let err = null
+  try { extractItems(WITCH_FIXTURE, { selector: '.nonexistent-class-xyz' }) }
+  catch (e) { err = e }
+  assert(err, 'debería lanzar')
+  assert(/matched no elements/i.test(err.message), `mensaje inesperado: ${err.message}`)
+  log(`  selector sin matches OK: "${err.message}"`)
+}
+
+log('extractItems: elementos sin el atributo URL pedido → throw claro')
+{
+  // selector trae <a> con href (todos tienen), pero pedimos un attr inexistente.
+  let err = null
+  try { extractItems(WITCH_FIXTURE, { selector: 'table tr td a', url_attr: 'data-nonexistent' }) }
+  catch (e) { err = e }
+  assert(err, 'debería lanzar')
+  assert(/have no/i.test(err.message), `mensaje inesperado: ${err.message}`)
+  log(`  attr inexistente OK: "${err.message}"`)
+}
+
+log('normalizeItems: guids estables custom:{hash[:16]}, pub_date ascendente, fallback title=link')
+{
+  const base = 'https://example.com/'
+  const raw = [
+    { url: '/a', label: 'A' },
+    { url: 'https://example.com/b', label: 'B' },
+    { url: '/c' }                       // sin label → title = link
+  ]
+  const items = normalizeItems(raw, base)
+  assert(items.length === 3, `esperaba 3 items, hay ${items.length}`)
+  // URL relativa resuelta a absoluta.
+  assert(items[0].link === 'https://example.com/a', `link[0]: ${items[0].link}`)
+  // guid custom: + hash de 16 hex.
+  assert(/^custom:[0-9a-f]{16}$/.test(items[0].guid), `guid[0] malformado: ${items[0].guid}`)
+  // mismo URL → mismo guid (estable entre runs).
+  assert(items[0].guid === normalizeItems([{ url: '/a', label: 'x' }], base)[0].guid, 'guid debería ser determinístico')
+  // pub_date ascendente por índice (result[0] = más viejo = pub_date más bajo).
+  assert(items[0].pub_date < items[1].pub_date, `pub_date[0] debería ser < [1]`)
+  assert(items[1].pub_date < items[2].pub_date, `pub_date[1] debería ser < [2]`)
+  // fallback title=link cuando no hay label.
+  assert(items[2].title === items[2].link, `title[2] debería caer a link: ${items[2].title}`)
+  log(`  normalizeItems OK: guids ${items.map(i => i.guid.slice(0, 12) + '…').join(', ')}`)
+}
+
+log('normalizeItems: error en no-array')
+{
+  let err = null
+  try { normalizeItems('not an array', 'https://x/') }
+  catch (e) { err = e }
+  assert(err && /must return an array/i.test(err.message), `mensaje inesperado: ${err && err.message}`)
+  log(`  no-array OK: "${err.message}"`)
+}
+
+log('CUSTOM_ADAPTER.parse: end-to-end con fixture + config → 112 items normalizados')
+{
+  const config = { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: true }
+  const { items } = CUSTOM_ADAPTER.parse(WITCH_FIXTURE, 'https://w18.witchhatatelier.com/', config)
+  assert(items.length === 112, `esperaba 112 items, hay ${items.length}`)
+  assert(items.every(it => /^custom:[0-9a-f]{16}$/.test(it.guid)), 'todos los guids deben ser custom:')
+  // Con reverse + normalize, result[0] = Chapter 1 (pub_date más bajo, más viejo).
+  assert(/Chapter 1$/.test(items[0].title), `title[0]: ${items[0].title}`)
+  log(`  CUSTOM_ADAPTER.parse OK: ${items.length} items normalizados`)
+}
+
+log('CUSTOM_ADAPTER.preview: shape newest-first sin guid/pub_date (validado vía pipeline interno)')
+{
+  // preview() hace fetch HTTP real; no lo llamamos acá para no depender de red.
+  // Validamos que el pipeline interno (extract + normalize + sort DESC) produce
+  // el shape contractado: {title, link} en orden newest-first, sin campos internos.
+  const config = { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: true }
+  const raw = extractItems(WITCH_FIXTURE, config)
+  const normalized = normalizeItems(raw, 'https://w18.witchhatatelier.com/')
+  const view = normalized.slice().sort((a, b) => b.pub_date - a.pub_date).map(it => ({ title: it.title, link: it.link }))
+  assert(view.length === 112, `esperaba 112 items en preview, hay ${view.length}`)
+  // newest-first: Chapter 97 arriba.
+  assert(/Chapter 97/.test(view[0].title), `title[0] en preview esperaba Chapter 97, vino "${view[0].title}"`)
+  assert(!('guid' in view[0]), 'preview no debe incluir guid')
+  assert(!('pub_date' in view[0]), 'preview no debe incluir pub_date')
+  log(`  preview shape OK: ${view.length} items newest-first sin campos internos`)
+}
+
+log('fetchItems: con opts.config rutea a CUSTOM_ADAPTER (host override + fixture)')
+{
+  const srv = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    res.end(WITCH_FIXTURE)
+  })
+  await new Promise(r => srv.listen(0, r))
+  const port = srv.address().port
+  const url = `http://localhost:${port}/`
+  const config = { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: true }
+  const { items } = await fetchItems(url, { config })
+  assert(items.length === 112, `esperaba 112 items, hay ${items.length}`)
+  assert(items.every(it => /^custom:[0-9a-f]{16}$/.test(it.guid)), 'todos los guids deben ser custom: (prioridad sobre host routing)')
+  await new Promise(r => srv.close(r))
+  log(`  fetchItems con config OK (112 items custom, sin pasar por detectSource)`)
+}
+
+log('fetchItems: sin opts.config sigue ruteando por host/sniff (regresión Épica 12)')
+{
+  // Sin config, localhost no es host conocido y el body es HTML → "unsupported source".
+  const srv = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' })
+    res.end('<!DOCTYPE html><html><body>nothing</body></html>')
+  })
+  await new Promise(r => srv.listen(0, r))
+  const port = srv.address().port
+  let err = null
+  try { await fetchItems(`http://localhost:${port}/`) }
+  catch (e) { err = e }
+  assert(err && /unsupported source|no adapter/i.test(err.message), `debería throw unsupported sin config: ${err && err.message}`)
+  await new Promise(r => srv.close(r))
+  log('  sin config → flujo Épica 12 OK (unsupported source)')
+}
+
 if (process.exitCode) {
-  console.error('=== Smoke test Épica 12 FALLÓ ===')
+  console.error('=== Smoke test Épicas 12+14 FALLÓ ===')
 } else {
-  log('=== Smoke test Épica 12 OK ===')
+  log('=== Smoke test Épicas 12+14 OK ===')
 }

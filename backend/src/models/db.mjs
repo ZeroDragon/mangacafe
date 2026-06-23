@@ -103,6 +103,10 @@ export const ready = (async () => {
   // esto aplica el cambio a bases existentes.
   await addColumnIfMissing('series', 'last_read', 'TEXT')
   await dropColumnIfExists('series', 'current_chapter')
+  // Épica 14: source_config TEXT (JSON) para scraping genérico de graphic novels.
+  // CREATE TABLE ya trae source_config en bases nuevas; esto agrega la columna
+  // a bases existentes.
+  await addColumnIfMissing('series', 'source_config', 'TEXT')
 
   const tables = await Promise.all([
     createTable('users', `
@@ -123,6 +127,7 @@ export const ready = (async () => {
         last_read TEXT,
         imdb_url TEXT,
         rss_url TEXT,
+        source_config TEXT,
         last_known_total INTEGER,
         last_checked_at INTEGER,
         last_error TEXT,

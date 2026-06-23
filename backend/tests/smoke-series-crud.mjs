@@ -184,6 +184,87 @@ const refreshed = await request('get', '/api/series', null, tokenA)
 if (!refreshed.data.token) fail('falta token rotado')
 // (no comparamos string porque el timestamp interno puede variar en ms)
 
+// --- Épica 14: source_config (validación HTTP + persistencia + parseo en GET) ---
+log('POST /api/series type=manga + rss_url + source_config válida -> persiste')
+const cfgCreate = await request('post', '/api/series', {
+  type: 'manga', name: 'Witch Hat',
+  rss_url: 'https://w18.witchhatatelier.com/',
+  source_config: { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: true }
+}, tokenA)
+if (cfgCreate.status !== 200) fail(`esperaba 200, vino ${cfgCreate.status}: ${JSON.stringify(cfgCreate.data)}`)
+const cfgId = cfgCreate.data.id
+const cfgGet = await request('get', `/api/series/${cfgId}`, null, tokenA)
+if (cfgGet.status !== 200) fail(`GET serie con config falló: ${cfgGet.status}`)
+// GET devuelve source_config parseado como objeto (no string JSON).
+const cfg = cfgGet.data.data.source_config
+if (!cfg || typeof cfg !== 'object') fail(`source_config debería ser objeto, vino ${typeof cfg}`)
+if (cfg.selector !== 'table tr td a') fail(`selector mal persistido: ${cfg.selector}`)
+if (cfg.url_attr !== 'href') fail(`url_attr mal persistido: ${cfg.url_attr}`)
+if (cfg.reverse !== true) fail(`reverse mal persistido: ${cfg.reverse}`)
+log(`  source_config persistida OK: ${JSON.stringify(cfg)}`)
+
+log('POST /api/series type=manga + source_config SIN rss_url -> 400')
+const cfgNoUrl = await request('post', '/api/series', {
+  type: 'manga', name: 'No URL',
+  source_config: { selector: 'a' }
+}, tokenA)
+if (cfgNoUrl.status !== 400) fail(`esperaba 400 sin rss_url, vino ${cfgNoUrl.status}`)
+if (!/source_config requires/i.test(cfgNoUrl.data.error)) fail(`mensaje inesperado: ${cfgNoUrl.data.error}`)
+log(`  400 sin rss_url OK: "${cfgNoUrl.data.error}"`)
+
+log('POST /api/series type=anime + source_config -> 400')
+const cfgAnime = await request('post', '/api/series', {
+  type: 'anime', name: 'Anime Cfg',
+  imdb_url: 'https://www.imdb.com/title/tt1/',
+  source_config: { selector: 'a' }
+}, tokenA)
+if (cfgAnime.status !== 400) fail(`esperaba 400 anime con config, vino ${cfgAnime.status}`)
+if (!/source_config is only for manga/i.test(cfgAnime.data.error)) fail(`mensaje inesperado: ${cfgAnime.data.error}`)
+log(`  400 anime OK: "${cfgAnime.data.error}"`)
+
+log('POST /api/series type=manga + source_config sin selector -> 400')
+const cfgNoSel = await request('post', '/api/series', {
+  type: 'manga', name: 'No Sel',
+  rss_url: 'https://x.com/',
+  source_config: { url_attr: 'href' }
+}, tokenA)
+if (cfgNoSel.status !== 400) fail(`esperaba 400 sin selector, vino ${cfgNoSel.status}`)
+if (!/selector is required/i.test(cfgNoSel.data.error)) fail(`mensaje inesperado: ${cfgNoSel.data.error}`)
+log(`  400 sin selector OK: "${cfgNoSel.data.error}"`)
+
+log('POST /api/series type=manga + source_config que no es objeto -> 400')
+const cfgNotObj = await request('post', '/api/series', {
+  type: 'manga', name: 'Not Obj',
+  rss_url: 'https://x.com/',
+  source_config: 'not-an-object'
+}, tokenA)
+if (cfgNotObj.status !== 400) fail(`esperaba 400 cfg no-objeto, vino ${cfgNotObj.status}`)
+if (!/source_config must be an object/i.test(cfgNotObj.data.error)) fail(`mensaje inesperado: ${cfgNotObj.data.error}`)
+log(`  400 no-objeto OK: "${cfgNotObj.data.error}"`)
+
+log('POST /api/sources/preview sin url -> 400')
+const previewNoUrl = await request('post', '/api/sources/preview', {
+  config: { selector: 'a' }
+}, tokenA)
+if (previewNoUrl.status !== 400) fail(`esperaba 400 preview sin url, vino ${previewNoUrl.status}`)
+if (!/url must be/i.test(previewNoUrl.data.error)) fail(`mensaje inesperado: ${previewNoUrl.data.error}`)
+log(`  400 preview sin url OK: "${previewNoUrl.data.error}"`)
+
+log('POST /api/sources/preview sin config -> 400')
+const previewNoCfg = await request('post', '/api/sources/preview', {
+  url: 'https://x.com/'
+}, tokenA)
+if (previewNoCfg.status !== 400) fail(`esperaba 400 preview sin config, vino ${previewNoCfg.status}`)
+if (!/source_config must be an object/i.test(previewNoCfg.data.error)) fail(`mensaje inesperado: ${previewNoCfg.data.error}`)
+log(`  400 preview sin config OK: "${previewNoCfg.data.error}"`)
+
+log('POST /api/sources/preview sin auth -> 401')
+const previewNoAuth = await request('post', '/api/sources/preview', {
+  url: 'https://x.com/', config: { selector: 'a' }
+})
+if (previewNoAuth.status !== 401) fail(`esperaba 401 preview sin auth, vino ${previewNoAuth.status}`)
+log('  401 sin auth OK')
+
 // Limpieza
 await new Promise(r => server.close(r))
 

@@ -50,6 +50,9 @@ Detalle técnico del scaffolding conservado tras la Épica 0 y extendido por las
 - `POST /api/reels/:id/seen` — toggle a visto (un solo item).
 - `DELETE /api/reels/:id/seen` — toggle a pendiente.
 
+**Sources preview (Épica 14):**
+- `POST /api/sources/preview` — `{ url, config: { selector, url_attr?, label_attr?, reverse? } }` → `{ items: [{title, link}], count }` (dry-run del adapter custom, no persiste).
+
 ### Middlewares exportados (reutilizar en rutas protegidas)
 ```js
 import { verifyToken, getUser, resolveUserId } from './index.mjs'
@@ -78,7 +81,7 @@ JWT custom (sin librería externa). Token = `<base64url payload>.<HMAC-SHA256>`.
 - Export `ready` (Promise que se resuelve cuando todas las tablas e índices están creados) — los tests lo `await`; el boot lo usa para arrancar el scheduler.
 - El schema se inicializa al importar el módulo (side-effect del `Promise.all`).
 
-### Schema actual (post-Épica 11)
+### Schema actual (post-Épica 14)
 
 ```sql
 users (id, username UNIQUE, password, created_at)
@@ -90,6 +93,7 @@ series (
   last_read TEXT,              -- Épica 10: string, title del último item visto
   imdb_url TEXT,               -- feed si type='anime'
   rss_url TEXT,                -- feed si type='manga'
+  source_config TEXT,          -- Épica 14: JSON {selector,url_attr?,label_attr?,reverse?} para scraping genérico (manga only)
   last_known_total, last_checked_at, last_error,
   created_at, updated_at
 )
@@ -133,13 +137,14 @@ Todos los modelos devuelven Promises con `{success|error|skipped|data}`, nunca l
 - `refreshByUser(userId)` respeta ownership.
 - `startScheduler({intervalMs=6h, runImmediately=true})` corre al boot en producción; `unref()` para no mantener vivo el proceso en tests.
 
-### Sources (`src/sources/`) — Épica 12
-Orquestador de fuentes para mangas: el refresher solo llama `sources.fetchItems(url)` y este módulo decide la implementación.
-- `index.mjs`: `fetchItems(url)` + `detectSource({ url, contentType, body })`. Algoritmo: (1) host conocido (comivex.com) → adapter registrado; (2) GET + sniff (Content-Type `*/xml` o body con `<rss`/`<feed`/`<?xml` → rss; body `<html` y host con adapter → adapter; HTML sin adapter → throw `unsupported source`); (3) default rss (backward compat).
+### Sources (`src/sources/`) — Épicas 12 + 14
+Orquestador de fuentes para mangas: el refresher solo llama `sources.fetchItems(url, opts?)` y este módulo decide la implementación.
+- `index.mjs`: `fetchItems(url, opts)` + `detectSource({ url, contentType, body })`. Algoritmo: (0) si `opts.config` → adapter custom (Épica 14, prioridad absoluta); (1) host conocido (comivex.com) → adapter registrado; (2) GET + sniff (Content-Type `*/xml` o body con `<rss`/`<feed`/`<?xml` → rss; body `<html` y host con adapter → adapter; HTML sin adapter → throw `unsupported source`); (3) default rss (backward compat).
 - `rss.mjs`: adapter RSS, wrapper delgado sobre `parseFeed` (`src/rss.mjs`).
 - `comivex.mjs`: adapter de comivex.com (cheerio); hace su propio GET con UA de browser; produce items con guid estable `comivex:{mangaId}:{chapterNumber}`. Hosts: `comivex.com`, `www.comivex.com`. Env vars: `COMIVEX_USER_AGENT`, `COMIVEX_TIMEOUT`.
+- `custom.mjs` (**Épica 14**): adapter genérico con config de usuario (cheerio; sin deps nuevas, sin `vm`). Recibe `{ url, config: { selector, url_attr, label_attr, reverse } }`, fetchea el HTML, aplica el selector + extrae los atributos + opcionalmente invierte el orden, y normaliza a items con guid estable `custom:{sha256(link)[:16]}`. Env vars: `CUSTOM_SOURCE_USER_AGENT`, `CUSTOM_SOURCE_TIMEOUT`.
 
-Sumar un proveedor nuevo = un archivo `src/sources/<host>.mjs` que exporte un adapter con `{ name, hosts, fetch(url), parse(body, url) }` y agregarlo al array `HOST_ADAPTERS` en `index.mjs`.
+Sumar un proveedor nuevo = un archivo `src/sources/<host>.mjs` que exporte un adapter con `{ name, hosts, fetch(url), parse(body, url) }` y agregarlo al array `HOST_ADAPTERS` en `index.mjs`. Para sitios sin adapter dedicado, el usuario carga la config desde el form (advanced mode) — el adapter `custom.mjs` los cubre sin código nuevo.
 
 ---
 
@@ -215,6 +220,8 @@ RSS_USER_AGENT "..."
 RSS_TIMEOUT 15000
 COMIVEX_USER_AGENT "..."        # Épica 12
 COMIVEX_TIMEOUT 15000           # Épica 12
+CUSTOM_SOURCE_USER_AGENT "..."  # Épica 14 (generic source-config scraper)
+CUSTOM_SOURCE_TIMEOUT 15000     # Épica 14
 REEL_USER_AGENT "..."           # Épica 11
 REEL_TIMEOUT 8000               # Épica 11
 BUILD_OUT_DIR dist              # o /srv/www/mangacafe.vip en prod

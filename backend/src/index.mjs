@@ -8,6 +8,7 @@ import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
 import * as crunchyroll from './crunchyroll.mjs'
 import detectReelTitle from './reel_fetch.mjs'
+import { CUSTOM_ADAPTER } from './sources/custom.mjs'
 import { ready as dbReady } from './models/db.mjs'
 
 const app = express()
@@ -71,10 +72,36 @@ const VALID_TYPES = ['manga', 'anime']
 const URL_FIELDS = ['url', 'cover_url']
 const isHttpUrl = (v) => typeof v === 'string' && /^https?:\/\/.+/.test(v)
 
+// Valida la shape de source_config (Épica 14). Devuelve array de mensajes.
+//   { selector: string (req), url_attr?: string, label_attr?: string, reverse?: boolean }
+const validateSourceConfig = (cfg) => {
+  if (typeof cfg !== 'object' || Array.isArray(cfg) || cfg === null) {
+    return ['source_config must be an object { selector, url_attr?, label_attr?, reverse? }']
+  }
+  const errs = []
+  if (typeof cfg.selector !== 'string' || !cfg.selector.trim()) {
+    errs.push('source_config.selector is required and must be a non-empty string')
+  }
+  if ('url_attr' in cfg && typeof cfg.url_attr !== 'string') errs.push('source_config.url_attr must be a string')
+  if ('label_attr' in cfg && typeof cfg.label_attr !== 'string') errs.push('source_config.label_attr must be a string')
+  if ('reverse' in cfg && typeof cfg.reverse !== 'boolean') errs.push('source_config.reverse must be a boolean')
+  return errs
+}
+
+// Parsea source_config desde la DB (string JSON) a objeto. Null si está vacío
+// o el JSON está corrupto. Usado en los GET para que el frontend reciba un
+// objeto listo para usar (no un string crudo).
+const parseSourceConfig = (raw) => {
+  if (!raw) return null
+  if (typeof raw === 'object') return raw
+  try { return JSON.parse(raw) } catch { return null }
+}
+
 // Devuelve array de mensajes de error. `partial=true` permite omitir campos (PUT).
 // Reglas de feed por type (Épica 9):
 //  - anime: solo imdb_url; rss_url rechazado.
 //  - manga: solo rss_url; imdb_url rechazado.
+// source_config (Épica 14): sólo manga, requiere rss_url, shape válida.
 const validateSeries = (body, partial = false) => {
   const errors = []
   const has = (k) => Object.prototype.hasOwnProperty.call(body, k)
@@ -101,6 +128,16 @@ const validateSeries = (body, partial = false) => {
   if (has('rss_url') && body.rss_url !== '' && body.rss_url != null) {
     if (!isHttpUrl(body.rss_url)) errors.push('rss_url must be an http(s) URL')
     if (isAnime) errors.push('rss_url is only for manga; anime uses imdb_url')
+  }
+  // source_config (Épica 14): sólo manga, requiere rss_url no-vacío, shape válida.
+  if (has('source_config') && body.source_config != null) {
+    if (isAnime) {
+      errors.push('source_config is only for manga; anime uses imdb_url')
+    } else if (isManga) {
+      const rssEmpty = !has('rss_url') || !body.rss_url || !String(body.rss_url).trim()
+      if (rssEmpty) errors.push('source_config requires a feed URL (rss_url)')
+      errors.push(...validateSourceConfig(body.source_config))
+    }
   }
   if (has('current_chapter')) {
     // Épica 10: current_chapter fue eliminado. Se ignora silenciosamente
@@ -143,7 +180,9 @@ app.post('/api/series', [verifyToken, getUser, resolveUserId], async (req, res) 
     cover_url: req.body.cover_url || null,
     last_read: req.body.last_read || null,
     imdb_url: isAnime ? (req.body.imdb_url || null) : null,
-    rss_url: isAnime ? null : (req.body.rss_url || null)
+    rss_url: isAnime ? null : (req.body.rss_url || null),
+    // Épica 14: source_config se persiste como string JSON.
+    source_config: isAnime ? null : (req.body.source_config ? JSON.stringify(req.body.source_config) : null)
   }
   const { error, id } = await series.create(res.userId, payload)
   if (error) return res.status(500).json({ error })
@@ -154,6 +193,7 @@ app.get('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, re
   const { error, data } = await series.getById(req.params.id, res.userId)
   if (error) return res.status(500).json({ error })
   if (!data) return res.status(404).json({ error: 'Series not found' })
+  data.source_config = parseSourceConfig(data.source_config)
   res.json({ data, token: res.newToken })
 })
 
@@ -170,9 +210,14 @@ app.put('/api/series/:id', [verifyToken, getUser, resolveUserId], async (req, re
   if (isAnime) {
     fields.imdb_url = req.body.imdb_url !== undefined ? (req.body.imdb_url || null) : existing.imdb_url
     fields.rss_url = null
+    fields.source_config = null
   } else {
     fields.rss_url = req.body.rss_url !== undefined ? (req.body.rss_url || null) : existing.rss_url
     fields.imdb_url = null
+    // Épica 14: source_config se persiste como string JSON.
+    fields.source_config = req.body.source_config !== undefined
+      ? (req.body.source_config ? JSON.stringify(req.body.source_config) : null)
+      : existing.source_config
   }
   const { error } = await series.update(req.params.id, res.userId, fields)
   if (error) return res.status(404).json({ error: 'Series not found or not owned' })
@@ -218,6 +263,7 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
     last_read: s.last_read,
     imdb_url: s.imdb_url,
     rss_url: s.rss_url,
+    source_config: parseSourceConfig(s.source_config),
     last_error: s.last_error,
     last_checked_at: s.last_checked_at,
     pending: s.pending,
@@ -233,6 +279,22 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
     summary: { totalPending, withUpdates, total: items.length, reelsPending },
     token: res.newToken
   })
+})
+
+// --- Sources preview (Épica 14) ---
+// Dry-run del adapter custom: fetchea la URL, aplica la config y devuelve los
+// items en orden newest-first (como el feed). No persiste nada.
+app.post('/api/sources/preview', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { url, config } = req.body || {}
+  if (!url || !isHttpUrl(url)) return res.status(400).json({ error: 'url must be an http(s) URL' })
+  const cfgErrors = validateSourceConfig(config)
+  if (cfgErrors.length) return res.status(400).json({ error: cfgErrors.join('; ') })
+  try {
+    const result = await CUSTOM_ADAPTER.preview(url, config)
+    res.json({ ...result, token: res.newToken })
+  } catch (err) {
+    res.status(400).json({ error: err?.message || String(err) })
+  }
 })
 
 // --- Reels (Épica 11) ---

@@ -17,6 +17,7 @@
 import axios from 'axios'
 import { RSS_ADAPTER } from './rss.mjs'
 import { COMIVEX_ADAPTER } from './comivex.mjs'
+import { CUSTOM_ADAPTER } from './custom.mjs'
 
 // Array explícito de adapters con hosts. Sumar uno nuevo = agregar un elemento.
 const HOST_ADAPTERS = [COMIVEX_ADAPTER]
@@ -66,8 +67,13 @@ export const detectSource = ({ url, contentType, body }) => {
   return { type: 'rss', adapter: RSS_ADAPTER }
 }
 
-// fetchItems(url) → { items: [{ guid, title, link, pub_date }] }
-export const fetchItems = async (url) => {
+// fetchItems(url, opts?) → { items: [{ guid, title, link, pub_date }] }
+// Si opts.config (source_config de Épica 14), la ruta custom tiene prioridad
+// absoluta sobre la detección por host/sniff (decisión explícita del usuario).
+export const fetchItems = async (url, opts = {}) => {
+  // Ruta custom: config explícito del usuario → adapter genérico.
+  if (opts.config) return CUSTOM_ADAPTER.fetch(url, opts.config)
+
   let detected
   try {
     detected = detectSource({ url })

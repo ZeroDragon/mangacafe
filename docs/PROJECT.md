@@ -33,6 +33,7 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 10. **Reels como tabla aparte:** los reels de FB se guardan en `reels` (no en `series`); marcar visto es por-item sin cascada; watch-later / ToDo; un único card fijo en el dashboard (Épica 11).
 11. **`rss_url` acepta RSS o HTML:** el campo `series.rss_url` de un manga admite un feed RSS/Atom o la URL de la página de la serie en un sitio soportado (comivex.com al iniciar). El refresher detecta el tipo automáticamente y rutea al parser o al scraper del proveedor. Sin columna nueva: detección por contenido/host (Épica 12).
 12. **Etiquetas de `type` en la UI:** la UI muestra **"Show"** para `type='anime'` y **"Graphic novel"** para `type='manga'`. Los valores internos de `series.type` (`'anime'`, `'manga'`) **no cambian** — son ids estables que persisten en la DB, se usan en queries, dispatch de feeds y clases CSS. El rename es exclusivamente cosmético (Épica 13).
+13. **`source_config` para scraping genérico:** una serie `manga` puede llevar además un `source_config` (JSON, nullable) con `{ selector, url_attr, label_attr, reverse }` que describe cómo extraer los capítulos del HTML del sitio referenciado por `rss_url`. Si está presente, el refresher fetchea el HTML, lo parsea con `cheerio` (sin dependencias nuevas — ya instalado), aplica el selector + extrae los atributos + opcionalmente invierte el orden, y normaliza a `series_items`. Si está ausente, el flujo es el de Épica 12 (detección por host → comivex, o sniff → RSS). El adapter comivex no se rompe (Épica 14).
 
 ## Stack conservado
 
@@ -58,6 +59,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 11 | Soporte para Facebook Reels | `[DONE]` | [epics/11-facebook-reels.md](epics/11-facebook-reels.md) |
 | 12 | Auto-detección de fuente (RSS vs HTML scraper) | `[DONE]` | [epics/12-source-autodetect.md](epics/12-source-autodetect.md) |
 | 13 | Reorganización del header + renombrado de tipos | `[DONE]` | [epics/13-header-menu-and-type-rename.md](epics/13-header-menu-and-type-rename.md) |
+| 14 | Scraping genérico con config de usuario | `[DONE]` | [epics/14-custom-source-config.md](epics/14-custom-source-config.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 

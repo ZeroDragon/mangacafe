@@ -236,14 +236,67 @@ const d2 = await refresher.refreshSeries((await series.getById(c7.id, u.id)).dat
 if (d2.inserted !== 1) fail(`esperaba 1 nuevo en dynamic v2, vino ${d2.inserted}`)
 log('  item nuevo detectado OK')
 
+// ============ Épica 14: dispatch manga con source_config (custom adapter) ============
+log('refreshSeries manga con source_config + rss_url → items vía CUSTOM_ADAPTER')
+{
+  const WITCH_FIXTURE = await readFile(join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'witchhatatelier.html'), 'utf8')
+  const htmlSrv = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    res.end(WITCH_FIXTURE)
+  })
+  await new Promise(r => htmlSrv.listen(0, r))
+  const htmlPort = htmlSrv.address().port
+  const htmlURL = `http://localhost:${htmlPort}/`
+
+  const config = { selector: 'table tr td a', url_attr: 'href', label_attr: 'text', reverse: true }
+  const c8 = await series.create(u.id, {
+    type: 'manga', name: 'Witch Hat', url: null, cover_url: null,
+    rss_url: htmlURL,
+    source_config: JSON.stringify(config)
+  })
+  const r = await refresher.refreshSeries((await series.getById(c8.id, u.id)).data)
+  if (r.total !== 112) fail(`esperaba 112 items vía custom adapter, vino total=${r.total}`)
+  const itemsRes = await seriesItem.listBySeries(c8.id)
+  const items = itemsRes.data || []
+  if (items.length !== 112) fail(`esperaba 112 items persistidos, hay ${items.length}`)
+  // guid custom: (no comivex:, no rss).
+  if (!/^custom:/.test(items[0].guid)) fail(`guid[0] debería ser custom:, vino ${items[0].guid}`)
+  log(`  custom adapter dispatch OK: 112 items con guids custom:`)
+  await new Promise(r => htmlSrv.close(r))
+}
+
+log('refreshSeries manga con rss_url PERO sin source_config → flujo Épica 12 (regresión)')
+{
+  // Sin source_config y con URL localhost (no comivex, no RSS), debe intentar
+  // detección y fallar con unsupported source → last_error poblado, sin items.
+  const htmlSrv = http.createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' })
+    res.end('<!DOCTYPE html><html><body>nothing</body></html>')
+  })
+  await new Promise(r => htmlSrv.listen(0, r))
+  const htmlPort = htmlSrv.address().port
+  const htmlURL = `http://localhost:${htmlPort}/`
+
+  const c9 = await series.create(u.id, {
+    type: 'manga', name: 'No Config', url: null, cover_url: null,
+    rss_url: htmlURL
+    // sin source_config
+  })
+  const r = await refresher.refreshSeries((await series.getById(c9.id, u.id)).data)
+  if (!r.error) fail(`esperaba error por unsupported source sin config, vino ${JSON.stringify(r)}`)
+  log(`  sin config → flujo Épica 12 OK: "${r.error.slice(0, 60)}…"`)
+  await new Promise(r => htmlSrv.close(r))
+}
+
 // ============ refreshByUser: respeta tipo ============
 log('refreshByUser refresca solo series con feed del tipo correcto')
 const before = await seriesItem.pendingCount(sid1)
 const rbu = await refresher.refreshByUser(u.id)
-// Series del usuario con feed: sid1 (manga/rss), c2 (anime/imdb), c5 (manga/500), c6 (manga/404), c7 (manga/dynamic)
+// Series del usuario con feed: sid1 (manga/rss), c2 (anime/imdb), c5 (manga/500),
+// c6 (manga/404), c7 (manga/dynamic), c8 (manga/custom), c9 (manga/no-config-error).
 // c3 y c4 se skipean (sin feed del tipo)
-if (rbu.total !== 5) fail(`refreshByUser.total esperaba 5, vino ${rbu.total}`)
-if (rbu.refreshed + rbu.failed !== 5) fail(`refreshed+failed esperaba 5, vino ${rbu.refreshed}+${rbu.failed}`)
+if (rbu.total !== 7) fail(`refreshByUser.total esperaba 7, vino ${rbu.total}`)
+if (rbu.refreshed + rbu.failed !== 7) fail(`refreshed+failed esperaba 7, vino ${rbu.refreshed}+${rbu.failed}`)
 log(`  refreshByUser OK: refreshed=${rbu.refreshed} failed=${rbu.failed} total=${rbu.total}`)
 
 // ============ Tests HTTP ============

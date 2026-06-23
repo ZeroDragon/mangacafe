@@ -48,7 +48,14 @@ const refreshAnime = async (s) => {
 const refreshManga = async (s) => {
   if (!s.rss_url) return { skipped: true }
   try {
-    const { items } = await sources.fetchItems(s.rss_url)
+    // source_config (Épica 14) viaja como string JSON en la DB; lo parseamos
+    // aquí. Si es null/vacío/malformado → opts.config falsy → flujo Épica 12.
+    let config = null
+    if (s.source_config) {
+      try { config = typeof s.source_config === 'string' ? JSON.parse(s.source_config) : s.source_config }
+      catch { config = null }
+    }
+    const { items } = await sources.fetchItems(s.rss_url, { config })
     const { inserted } = await seriesItem.insertMany(s.id, items)
     const total = items.length
     await series.update(s.id, s.user_id, {
