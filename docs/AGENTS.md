@@ -100,16 +100,20 @@ cd frontend && npm install && API=http://localhost:3000 npm run dev
 
 ```
 backend/
-  package.json                 # type:module; deps: axios, bcrypt, express, pug, sqlite3, xml2js
+  package.json                 # type:module; deps: axios, bcrypt, cheerio, express, pug, sqlite3, xml2js
   ecosystem.config.cjs          # PM2: app "mangacafe", cron_restart diario
   src/
     index.mjs                  # Express app + rutas + middlewares verifyToken/getUser/resolveUserId (exportados)
     auth.mjs                   # JWT custom (HMAC-SHA256, expira 1 año)
-    refresher.mjs              # Scheduler de feeds (6h) + refreshSeries/refreshAll/refreshByUser (dispatch por type)
+    refresher.mjs              # Scheduler de feeds (6h) + refreshSeries/refreshAll/refreshByUser (dispatch por type; manga vía sources.fetchItems)
     imdb.mjs                   # Scraper de IMDB vía GraphQL interno → items [{guid,title,link,pub_date}]
     rss.mjs                    # Parser RSS 2.0 / Atom → items (xml2js)
     crunchyroll.mjs            # Sync externo on-demand (watchlist + resolver ttId)
     reel_fetch.mjs             # Detección best-effort del título de un reel (og:title regex, fallback null)
+    sources/                   # Épica 12: orquestador de fuentes para mangas
+      index.mjs                # fetchItems(url) + detectSource (host routing + sniff de body)
+      rss.mjs                  # Adapter RSS (wrapper sobre src/rss.mjs)
+      comivex.mjs              # Adapter de comivex.com (cheerio; hace su propio GET con UA de browser)
     models/
       db.mjs                   # conexión SQLite + createTable/createIndex/addColumnIfMissing/dropColumnIfExists + migraciones
       user.mjs                 # signup/login/getBy/update (bcrypt cost 10)
@@ -123,8 +127,10 @@ backend/
     smoke-imdb-engine.mjs      # Épica 4
     smoke-dashboard.mjs        # Épica 5 (incluye reelsPending desde Épica 11)
     smoke-series-detail.mjs    # Épica 6
-    smoke-rss-engine.mjs       # Épica 9
+    smoke-rss-engine.mjs       # Épica 9 (incluye dispatch manga→comivex desde Épica 12)
+    smoke-sources.mjs          # Épica 12 (detectSource + adapters RSS/comivex)
     smoke-reels.mjs            # Épica 11
+    fixtures/comivex-1295.html # Épica 12: snapshot HTML para tests offline
 
 frontend/
   index.html                   # entry HTML, carga styles.styl + fonts, monta #app
@@ -284,7 +290,7 @@ export default {
 
 ## Estado actual y próximos pasos
 
-- **Completadas:** Épicas 0 a 11 y 13 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels, header menu + renombrado de tipos).
-- **Pendientes:** Épica 12 (auto-detección de fuente RSS vs HTML scraper).
+- **Completadas:** Épicas 0 a 13 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels, auto-detección de fuente RSS vs HTML scraper, header menu + renombrado de tipos).
+- **Pendientes:** ninguna (todas las épicas documentadas hasta la fecha están completas).
 
 Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una. Antes de tocar código, **lee la sección *Patrones del código* de este archivo** para no redescubrir los molds.

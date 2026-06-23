@@ -1,6 +1,6 @@
 # Épica 12 — Auto-detección de fuente (RSS vs HTML scrapeado) para mangas
 
-**Estado:** `[PENDING]`
+**Estado:** `[DONE]`
 **Objetivo:** Que el campo `rss_url` de un manga acepte **tanto un feed RSS/Atom como la URL de una página de series** (HTML). El refresher detecta automáticamente cuál de los dos es y ramifica el flujo: feed → parser RSS existente; HTML → scraper del proveedor correspondiente. Primer proveedor: **comivex.com**. La arquitectura queda preparada para sumar scrapers de otros sitios en el futuro sin tocar el refresher.
 
 **Depende de:** Épica 9 (motor RSS + dispatch por `type`), Épica 4 (`refresher.mjs` + scheduler).
@@ -163,36 +163,36 @@ COMIVEX_TIMEOUT "ms for comivex HTTP requests (e.g. 15000)"
 ## Tareas
 
 ### Backend
-- [ ] `backend/package.json`: verificar/agregar `cheerio`.
-- [ ] `backend/src/sources/index.mjs` (nuevo): `fetchItems(url)` + `detectSource({ url, contentType, body })` con el algoritmo de 3 pasos.
-- [ ] `backend/src/sources/rss.mjs` (nuevo): wrapper sobre `parseFeed`.
-- [ ] `backend/src/sources/comivex.mjs` (nuevo): port de `experiments/comivex-scraper/scrape.mjs`; helpers `parseAgeToEpoch`, `parseComivexHTML`, exports `COMIVEX_ADAPTER`.
-- [ ] `backend/src/refresher.mjs`: `refreshManga` delega a `sources.fetchItems`.
-- [ ] `env_example`: `COMIVEX_USER_AGENT`, `COMIVEX_TIMEOUT`.
-- [ ] Borrar `experiments/comivex-scraper/` completo (script + `node_modules` + `package.json` + `package-lock.json`) una vez portado a `backend/src/sources/comivex.mjs` y verificado.
+- [x] `backend/package.json`: verificar/agregar `cheerio`.
+- [x] `backend/src/sources/index.mjs` (nuevo): `fetchItems(url)` + `detectSource({ url, contentType, body })` con el algoritmo de 3 pasos.
+- [x] `backend/src/sources/rss.mjs` (nuevo): wrapper sobre `parseFeed`.
+- [x] `backend/src/sources/comivex.mjs` (nuevo): port de `experiments/comivex-scraper/scrape.mjs`; helpers `parseAgeToEpoch`, `parseComivexHTML`, exports `COMIVEX_ADAPTER`.
+- [x] `backend/src/refresher.mjs`: `refreshManga` delega a `sources.fetchItems`.
+- [x] `env_example`: `COMIVEX_USER_AGENT`, `COMIVEX_TIMEOUT`.
+- [x] Borrar `experiments/comivex-scraper/` completo (script + `node_modules` + `package.json` + `package-lock.json`) una vez portado a `backend/src/sources/comivex.mjs` y verificado.
 
 ### Frontend
-- [ ] `frontend/src/components/SeriesForm.vue`: label/placeholder del campo `rss_url` ("Feed URL or series page").
+- [x] `frontend/src/components/SeriesForm.vue`: label/placeholder del campo `rss_url` ("Feed URL or series page").
 
 ### Tests
-- [ ] `backend/tests/smoke-sources.mjs` (nuevo):
+- [x] `backend/tests/smoke-sources.mjs` (nuevo):
   - `detectSource`: cubre RSS por Content-Type, RSS por sniff (`<rss>` sin content-type correcto), Atom (`<feed>`), HTML (`<html>`), host conocido (`comivex.com` → adapter), host desconocido con HTML → error.
   - `fetchItems('https://comivex.com/series/1295-…/')`: prueba en vivo (o mock con fixture HTML commiteado en `tests/fixtures/comivex-1295.html`) → valida items con `guid` `comivex:1295:N`, `link` absoluto, `pub_date` no null.
   - Adapter RSS: reusa el mini-servidor HTTP del `smoke-rss-engine.mjs` actual; verifica que el wrapper produce el mismo output que `parseFeed`.
   - Host desconocido con HTML → lanza error claro (`unsupported source`).
-- [ ] `backend/tests/smoke-rss-engine.mjs`: ampliar para verificar que el dispatch final sigue siendo por `type` y que un manga con URL `comivex.com` rutea al scraper (mockeando `sources.comivex.fetch`).
-- [ ] Smoke existentes (`smoke-series-crud`, `smoke-dashboard`, `smoke-series-detail`) siguen en verde.
+- [x] `backend/tests/smoke-rss-engine.mjs`: ampliar para verificar que el dispatch final sigue siendo por `type` y que un manga con URL `comivex.com` rutea al scraper (mockeando `sources.comivex.fetch`).
+- [x] Smoke existentes (`smoke-series-crud`, `smoke-dashboard`, `smoke-series-detail`) siguen en verde.
 
 ## Verificación
 
-- [ ] Manga creado con URL de **feed RSS real** → refresh inserta items como antes (sin regresión, el adapter RSS es la ruta).
-- [ ] Manga creado con URL de **comivex.com/series/…** → refresh inserta todos los capítulos declarados (81/81 en el caso de prueba), con guids `comivex:{id}:{num}` estables.
-- [ ] Segundo refresh del mismo manga no duplica items (dedupe por `guid`).
-- [ ] Manga creado con URL de un host no soportado (p.ej. `https://example.com/manga/x`) → `last_error` con mensaje claro; no rompe el scheduler ni el refresh de otras series.
-- [ ] Manga con feed RSS que viene con `Content-Type: text/plain` (server mal configurado) → sigue funcionando por sniff de `<rss>`.
-- [ ] `refreshAll` (scheduler) procesa mezcla de mangas con RSS y con URL de comivex sin errores.
-- [ ] Anime con `imdb_url` sigue funcionando intacto (regresión Épica 9).
-- [ ] `experiments/comivex-scraper/` fue borrado del repo (su lógica vive en `backend/src/sources/comivex.mjs`).
+- [x] Manga creado con URL de **feed RSS real** → refresh inserta items como antes (sin regresión, el adapter RSS es la ruta).
+- [x] Manga creado con URL de **comivex.com/series/…** → refresh inserta todos los capítulos declarados (81/81 en el caso de prueba), con guids `comivex:{id}:{num}` estables.
+- [x] Segundo refresh del mismo manga no duplica items (dedupe por `guid`).
+- [x] Manga creado con URL de un host no soportado (p.ej. `https://example.com/manga/x`) → `last_error` con mensaje claro; no rompe el scheduler ni el refresh de otras series.
+- [x] Manga con feed RSS que viene con `Content-Type: text/plain` (server mal configurado) → sigue funcionando por sniff de `<rss>`.
+- [x] `refreshAll` (scheduler) procesa mezcla de mangas con RSS y con URL de comivex sin errores.
+- [x] Anime con `imdb_url` sigue funcionando intacto (regresión Épica 9).
+- [x] `experiments/comivex-scraper/` fue borrado del repo (su lógica vive en `backend/src/sources/comivex.mjs`).
 
 ## Cómo reproducir la verificación
 

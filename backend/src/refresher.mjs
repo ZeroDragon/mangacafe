@@ -2,21 +2,18 @@ import db from './models/db.mjs'
 import series from './models/series.mjs'
 import seriesItem from './models/series_item.mjs'
 import fetchEpisodes, { airedUntilEpoch } from './imdb.mjs'
-import axios from 'axios'
-import parseFeed from './rss.mjs'
+import sources from './sources/index.mjs'
 
 const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000 // 6h (decisión 5)
 const DELAY_BETWEEN_FETCHES_MS = 800 // rate limit suave entre fetches
 
-const RSS_UA = process.env.RSS_USER_AGENT || 'MangaCafeRSS/1.0 (+https://github.com/mangacafe)'
-const RSS_TIMEOUT = Number(process.env.RSS_TIMEOUT) || 15000
-
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const now = () => Math.floor(Date.now() / 1000)
 
-// Refresca una sola serie ramificando por type (Épica 9):
+// Refresca una sola serie ramificando por type (Épica 9; Épica 12 delega
+// manga → sources.fetchItems que auto-detecta RSS vs HTML scraper):
 //  - anime: IMDB (fetchEpisodes + purga de no emitidos).
-//  - manga: RSS/Atom (parseFeed).
+//  - manga: sources (RSS/Atom o adapter de host — p.ej. comivex.com).
 // Setea last_error en fallo (no revienta al caller). Skipea si no tiene el feed
 // que corresponde a su tipo.
 const refreshSeries = async (s) => {
@@ -51,17 +48,7 @@ const refreshAnime = async (s) => {
 const refreshManga = async (s) => {
   if (!s.rss_url) return { skipped: true }
   try {
-    const res = await axios.get(s.rss_url, {
-      headers: { 'User-Agent': RSS_UA },
-      timeout: RSS_TIMEOUT,
-      responseType: 'text',
-      // algunos feeds vienen como application/xml o text/xml; queremos el body crudo
-      transformResponse: [d => d]
-    })
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(`HTTP ${res.status}`)
-    }
-    const items = await parseFeed(res.data)
+    const { items } = await sources.fetchItems(s.rss_url)
     const { inserted } = await seriesItem.insertMany(s.id, items)
     const total = items.length
     await series.update(s.id, s.user_id, {

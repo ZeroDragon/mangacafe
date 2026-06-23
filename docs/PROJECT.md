@@ -56,7 +56,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 9 | Motor RSS para mangas | `[DONE]` | [epics/09-manga-rss.md](epics/09-manga-rss.md) |
 | 10 | Indicador de "último leído" como string | `[DONE]` | [epics/10-last-read-string.md](epics/10-last-read-string.md) |
 | 11 | Soporte para Facebook Reels | `[DONE]` | [epics/11-facebook-reels.md](epics/11-facebook-reels.md) |
-| 12 | Auto-detección de fuente (RSS vs HTML scraper) | `[PENDING]` | [epics/12-source-autodetect.md](epics/12-source-autodetect.md) |
+| 12 | Auto-detección de fuente (RSS vs HTML scraper) | `[DONE]` | [epics/12-source-autodetect.md](epics/12-source-autodetect.md) |
 | 13 | Reorganización del header + renombrado de tipos | `[DONE]` | [epics/13-header-menu-and-type-rename.md](epics/13-header-menu-and-type-rename.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.

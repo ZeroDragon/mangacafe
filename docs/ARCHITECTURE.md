@@ -128,10 +128,18 @@ reels (                        -- Épica 11: watch-later, sin feed, sin cascada
 Todos los modelos devuelven Promises con `{success|error|skipped|data}`, nunca lanzan.
 
 ### Refresher (`src/refresher.mjs`)
-- `refreshSeries(s)` despacha por `type`: anime → `imdb.mjs`, manga → `rss.mjs`. Setea `last_error` en fallo (no revienta).
+- `refreshSeries(s)` despacha por `type`: anime → `imdb.mjs`; manga → `sources.fetchItems` (Épica 12: orquestador que auto-detecta RSS vs HTML scraper por host + sniff). Setea `last_error` en fallo (no revienta).
 - `refreshAll()` recorre todas las series de todos los usuarios (con `DELAY_BETWEEN_FETCHES_MS = 800ms`).
 - `refreshByUser(userId)` respeta ownership.
 - `startScheduler({intervalMs=6h, runImmediately=true})` corre al boot en producción; `unref()` para no mantener vivo el proceso en tests.
+
+### Sources (`src/sources/`) — Épica 12
+Orquestador de fuentes para mangas: el refresher solo llama `sources.fetchItems(url)` y este módulo decide la implementación.
+- `index.mjs`: `fetchItems(url)` + `detectSource({ url, contentType, body })`. Algoritmo: (1) host conocido (comivex.com) → adapter registrado; (2) GET + sniff (Content-Type `*/xml` o body con `<rss`/`<feed`/`<?xml` → rss; body `<html` y host con adapter → adapter; HTML sin adapter → throw `unsupported source`); (3) default rss (backward compat).
+- `rss.mjs`: adapter RSS, wrapper delgado sobre `parseFeed` (`src/rss.mjs`).
+- `comivex.mjs`: adapter de comivex.com (cheerio); hace su propio GET con UA de browser; produce items con guid estable `comivex:{mangaId}:{chapterNumber}`. Hosts: `comivex.com`, `www.comivex.com`. Env vars: `COMIVEX_USER_AGENT`, `COMIVEX_TIMEOUT`.
+
+Sumar un proveedor nuevo = un archivo `src/sources/<host>.mjs` que exporte un adapter con `{ name, hosts, fetch(url), parse(body, url) }` y agregarlo al array `HOST_ADAPTERS` en `index.mjs`.
 
 ---
 
@@ -205,6 +213,8 @@ IMDB_GRAPHQL_ENDPOINT "..."     # opcional, override
 IMDB_TZ "America/Mexico_City"   # opcional, default tz del sistema
 RSS_USER_AGENT "..."
 RSS_TIMEOUT 15000
+COMIVEX_USER_AGENT "..."        # Épica 12
+COMIVEX_TIMEOUT 15000           # Épica 12
 REEL_USER_AGENT "..."           # Épica 11
 REEL_TIMEOUT 8000               # Épica 11
 BUILD_OUT_DIR dist              # o /srv/www/mangacafe.vip en prod

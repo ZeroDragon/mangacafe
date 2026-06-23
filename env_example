@@ -8,6 +8,8 @@ IMDB_GRAPHQL_ENDPOINT "override the IMDB GraphQL endpoint (default https://api.g
 IMDB_TZ "timezone used to decide if an episode already aired (default: system tz, e.g. America/Mexico_City)"
 RSS_USER_AGENT "User-Agent for RSS/Atom feed fetches (e.g. MangaCafeRSS/1.0)"
 RSS_TIMEOUT "ms for RSS HTTP requests (e.g. 15000)"
+COMIVEX_USER_AGENT "User-Agent for scraping comivex.com (realistic browser UA)"
+COMIVEX_TIMEOUT "ms for comivex HTTP requests (e.g. 15000)"
 REEL_USER_AGENT "User-Agent for best-effort FB reel title fetch (e.g. Mozilla/5.0 ... Chrome/...)"
 REEL_TIMEOUT "ms for FB reel HTTP requests (e.g. 8000)"
 BUILD_OUT_DIR "where vite writes the frontend build (e.g. dist for dev, /srv/www/mangacafe.vip for prod served by nginx)"

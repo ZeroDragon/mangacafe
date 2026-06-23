@@ -29,8 +29,8 @@
       span IMDB episodes URL (optional)
       input(v-model="form.imdb_url" type="url" placeholder="https://www.imdb.com/title/tt.../episodes/?season=2")
     label(v-else)
-      span RSS feed URL (optional)
-      input(v-model="form.rss_url" type="url" placeholder="https://your-feed-url.com/feed")
+      span Feed URL or series page (optional)
+      input(v-model="form.rss_url" type="url" placeholder="https://site.com/feed.xml or https://comivex.com/series/…")
     .actions
       button(type="submit" :disabled="loading") {{ isEdit ? 'Save' : 'Create' }}
       button.cancel(type="button" @click="$router.push('/series')") Cancel

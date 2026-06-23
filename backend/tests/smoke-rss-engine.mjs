@@ -10,12 +10,16 @@
 import '../../dotenv.mjs'
 import http from 'http'
 import axios from 'axios'
+import { readFile } from 'fs/promises'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import db, { ready } from '../src/models/db.mjs'
 import user from '../src/models/user.mjs'
 import series from '../src/models/series.mjs'
 import seriesItem from '../src/models/series_item.mjs'
 import parseFeed from '../src/rss.mjs'
 import refresher from '../src/refresher.mjs'
+import { COMIVEX_ADAPTER } from '../src/sources/comivex.mjs'
 import { app } from '../src/index.mjs'
 
 await ready
@@ -296,6 +300,40 @@ const otherToken = (await request('post', '/api/login', { username: other, passw
 const otherRes = await request('post', `/api/series/${sid1}/refresh`, null, otherToken)
 if (otherRes.status !== 404) fail(`esperaba 404 refresh serie ajena, vino ${otherRes.status}`)
 log('  ownership OK')
+
+// ============ Dispatch: manga -> comivex (Épica 12) ============
+// Servimos un fixture HTML de comivex desde un mini-servidor local; override
+// temporal de los hosts del adapter para que el orquestador rutee a él.
+log('refreshSeries manga con rss_url=host-comivex (mock local) -> scraper')
+const __dirname2 = dirname(fileURLToPath(import.meta.url))
+const COMIVEX_FIXTURE = await readFile(join(__dirname2, 'fixtures', 'comivex-1295.html'), 'utf8')
+const comivexSrv = http.createServer((_req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+  res.end(COMIVEX_FIXTURE)
+})
+await new Promise(r => comivexSrv.listen(0, r))
+const comivexPort = comivexSrv.address().port
+const comivexURL = `http://localhost:${comivexPort}/series/1295-test/`
+const cComivex = await series.create(u.id, {
+  type: 'manga', name: 'Comivex Manga', url: null, cover_url: null,
+  rss_url: comivexURL
+})
+const _origComivexHosts = COMIVEX_ADAPTER.hosts.slice()
+COMIVEX_ADAPTER.hosts.push('localhost')
+try {
+  const rComivex = await refresher.refreshSeries((await series.getById(cComivex.id, u.id)).data)
+  if (rComivex.error) fail('refreshSeries comivex falló: ' + rComivex.error)
+  if (rComivex.total !== 3) fail(`esperaba total=3 (comivex mock), vino ${rComivex.total}`)
+  if (rComivex.inserted !== 3) fail(`esperaba inserted=3, vino ${rComivex.inserted}`)
+  // Dedupe por guid en segundo refresh.
+  const rComivex2 = await refresher.refreshSeries((await series.getById(cComivex.id, u.id)).data)
+  if (rComivex2.inserted !== 0) fail(`esperaba 0 insertados en 2do refresh, vino ${rComivex2.inserted}`)
+} finally {
+  COMIVEX_ADAPTER.hosts.length = 0
+  _origComivexHosts.forEach(h => COMIVEX_ADAPTER.hosts.push(h))
+}
+await new Promise(r => comivexSrv.close(r))
+log('  manga -> comivex OK (3 items, dedupe en 2do refresh)')
 
 // ============ Scheduler ============
 log('startScheduler/stopScheduler (no revienta)')
