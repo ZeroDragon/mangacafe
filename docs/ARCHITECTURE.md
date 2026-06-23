@@ -44,7 +44,7 @@ Detalle técnico del scaffolding conservado tras la Épica 0 y extendido por las
 
 **Reels (Épica 11):** watch-later independiente de series, **sin cascada**.
 - `GET /api/reels` — pendientes + vistos juntos (el front separa por `seen`).
-- `POST /api/reels` — `{ url, title? }` (title se autodetecta con `reel_fetch.detectTitle` si no viene).
+- `POST /api/reels` — `{ url, title? }` (title optional, user-provided; sin autodetección).
 - `PUT /api/reels/:id` — update con whitelist `[url, title]`; `title: null` explícito limpia.
 - `DELETE /api/reels/:id`.
 - `POST /api/reels/:id/seen` — toggle a visto (un solo item).
@@ -222,8 +222,6 @@ COMIVEX_USER_AGENT "..."        # Épica 12
 COMIVEX_TIMEOUT 15000           # Épica 12
 CUSTOM_SOURCE_USER_AGENT "..."  # Épica 14 (generic source-config scraper)
 CUSTOM_SOURCE_TIMEOUT 15000     # Épica 14
-REEL_USER_AGENT "..."           # Épica 11
-REEL_TIMEOUT 8000               # Épica 11
 BUILD_OUT_DIR dist              # o /srv/www/mangacafe.vip en prod
 ```
 

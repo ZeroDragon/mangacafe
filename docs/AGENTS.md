@@ -36,6 +36,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 | 11 | `rss_url` acepta RSS **o** HTML | El campo `series.rss_url` de un manga admite (a) un feed RSS/Atom o (b) la URL de la página de la serie en un sitio soportado (comivex.com al iniciar). El refresher detecta el tipo automáticamente y rutea al parser o al scraper del proveedor. **No** se agrega una columna nueva: la detección es por contenido/host, no por un flag en la DB (Épica 12) |
 | 12 | Etiquetas de `type` en la UI | La UI muestra **"Show"** para `type='anime'` y **"Graphic novel"** para `type='manga'`. Los valores internos de `series.type` (`'anime'`, `'manga'`) **no cambian** — son ids estables usados en queries, dispatch de feeds y clases CSS. El rename es exclusivamente cosmético (Épica 13) |
 | 13 | `source_config` para scraping genérico | Una serie `manga` puede llevar un **`source_config`** (JSON, nullable) con `{ selector, url_attr, label_attr, reverse }` que describe cómo extraer los capítulos del HTML del sitio en `rss_url`. Si está presente, el refresher fetchea el HTML, lo parsea con `cheerio` (ya instalado — sin deps nuevas), aplica el selector + extrae los atributos + opcionalmente invierte el orden, y normaliza a `series_items`. No ejecuta JS arbitrario del usuario (sin sandbox, sin `vm`). Si está ausente, el flujo es el de Épica 12 (host → comivex; sniff → RSS). El adapter comivex **no se rompe**: comivex sin `source_config` sigue por su adapter dedicado (Épica 14) |
+| 14 | Anti-bot en signup vía mCaptcha | `POST /api/signup` requiere un `mcaptcha_token` válido emitido por `demo.mcaptcha.org` (proof-of-work SHA-256). El backend valida el token contra `/api/v1/pow/siteverify` antes de crear la cuenta. Login **no** se protege. **Fail-closed**: si `MCAPTCHA_SECRET_KEY` falta o el verify falla/timedout, el signup se rechaza (503/400). Env vars: `MCAPTCHA_SITE_KEY` (público, va al frontend), `MCAPTCHA_SECRET_KEY` (server-side), `MCAPTCHA_VERIFY_URL` (default demo.mcaptcha.org). Sin tracking, sin cookies (Épica 15) |
 
 ---
 
@@ -110,7 +111,6 @@ backend/
     imdb.mjs                   # Scraper de IMDB vía GraphQL interno → items [{guid,title,link,pub_date}]
     rss.mjs                    # Parser RSS 2.0 / Atom → items (xml2js)
     crunchyroll.mjs            # Sync externo on-demand (watchlist + resolver ttId)
-    reel_fetch.mjs             # Detección best-effort del título de un reel (og:title regex, fallback null)
     sources/                   # Épica 12: orquestador de fuentes para mangas
       index.mjs                # fetchItems(url, opts?) + detectSource (host routing + sniff de body); opts.config (Épica 14) rutea al custom adapter
       rss.mjs                  # Adapter RSS (wrapper sobre src/rss.mjs)
@@ -294,6 +294,6 @@ export default {
 ## Estado actual y próximos pasos
 
 - **Completadas:** Épicas 0 a 14 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels, auto-detección de fuente RSS vs HTML scraper, header menu + renombrado de tipos, scraping genérico con config de usuario).
-- **Pendientes:** ninguna (todas las épicas documentadas hasta la fecha están completas).
+- **Pendientes:** Épica 15 (protección de signup con mCaptcha — `docs/epics/15-mcaptcha-signup.md`).
 
 Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una. Antes de tocar código, **lee la sección *Patrones del código* de este archivo** para no redescubrir los molds.

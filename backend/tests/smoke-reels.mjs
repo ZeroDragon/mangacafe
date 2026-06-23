@@ -1,6 +1,5 @@
-// Smoke test para Épica 11: reels (watch-later de FB).
+// Smoke test para Épica 11: reels (watch-later).
 // Cubre: POST/PUT/DELETE, seen/unsee, UNIQUE(user_id,url), ownership, summary.
-// Title detection se cubre aparte con un fetcher mockeado (sin red).
 // Correr desde backend/: node tests/smoke-reels.mjs
 import '../../dotenv.mjs'
 import http from 'http'
@@ -8,7 +7,6 @@ import axios from 'axios'
 import db, { ready } from '../src/models/db.mjs'
 import user from '../src/models/user.mjs'
 import reel from '../src/models/reel.mjs'
-import { extractFromHtml } from '../src/reel_fetch.mjs'
 import { app } from '../src/index.mjs'
 
 await ready
@@ -155,18 +153,6 @@ const del1 = await request('delete', `/api/reels/${id1}`, null, tokenA)
 if (del1.status !== 200) fail(`DELETE falló: ${del1.status}`)
 const afterDel = await request('get', '/api/reels', null, tokenA)
 if (afterDel.data.data.find(r => r.id === id1)) fail('reel debería estar borrado')
-
-// --- Title detection (sin red): happy path + fallback ---
-log('Title detection: extractFromHtml con og:title válido')
-const html = '<html><head><meta property="og:title" content="Receta fácil en 60s"></head><body>x</body></html>'
-if (extractFromHtml(html) !== 'Receta fácil en 60s') fail('og:title no extraído')
-
-log('Title detection: login wall trivial -> null')
-const wall = '<title>Log in to Facebook | Facebook</title><meta property="og:title" content="Log in">'
-if (extractFromHtml(wall) !== null) fail('login wall debería ser null')
-
-log('Title detection: sin og:title -> null')
-if (extractFromHtml('<html><body>hola</body></html>') !== null) fail('sin og:title debería ser null')
 
 // --- Dashboard incluye reelsPending ---
 log('GET /api/dashboard incluye summary.reelsPending')

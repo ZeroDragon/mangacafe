@@ -26,7 +26,7 @@
       input(
         v-model="newTitle"
         type="text"
-        placeholder="Title (optional — auto-detected if empty)"
+        placeholder="Title (optional)"
         aria-label="Optional reel title")
     button.add-btn(:disabled="adding || !newUrl.trim()")
       span.material-symbols-outlined {{ adding ? 'progress_activity' : 'add' }}

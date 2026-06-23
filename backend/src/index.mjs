@@ -7,7 +7,6 @@ import reel from './models/reel.mjs'
 import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
 import * as crunchyroll from './crunchyroll.mjs'
-import detectReelTitle from './reel_fetch.mjs'
 import { CUSTOM_ADAPTER } from './sources/custom.mjs'
 import { ready as dbReady } from './models/db.mjs'
 
@@ -326,10 +325,7 @@ app.post('/api/reels', [verifyToken, getUser, resolveUserId], async (req, res) =
   const errors = validateReel(req.body)
   if (errors.length) return res.status(400).json({ error: errors.join('; ') })
   const url = req.body.url.trim()
-  // Si el usuario no manda title, intenta detectarlo best-effort (og:title).
-  // El fetch nunca bloquea el alta: si falla o no encuentra nada → null.
-  let title = req.body.title != null ? req.body.title.trim() : null
-  if (!title) title = await detectReelTitle(url)
+  const title = req.body.title != null ? req.body.title.trim() : null
   const result = await reel.create(res.userId, { url, title })
   if (result.error) return res.status(500).json({ error: result.error })
   if (result.skipped) return res.json({ skipped: true, token: res.newToken })
