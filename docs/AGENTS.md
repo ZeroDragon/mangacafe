@@ -139,7 +139,7 @@ frontend/
     styles.styl                # variables CSS globales (--background --foreground --primary --danger)
     components/
       Login.vue                # form toggle login/signup (Épica 2)
-      AppHeader.vue            # nav: Dashboard / Series / Crunchyroll / Reels + username + logout (Épica 2, extendido)
+      AppHeader.vue            # nav: Dashboard / Series / Reels + botón "New" + menú de usuario (dropdown con Sync Crunchyroll + Logout) (Épica 2, reorganizado en 13)
       Loader.vue               # spinner + esqueleto reutilizable
       Toasts.vue               # contenedor de toasts (consume toast.js)
       Dashboard.vue            # grid de SeriesCard + filtros + refresh + card sintético de Reels (Épica 5, extendido en 11)
@@ -284,7 +284,7 @@ export default {
 
 ## Estado actual y próximos pasos
 
-- **Completadas:** Épicas 0 a 11 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels).
+- **Completadas:** Épicas 0 a 11 y 13 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels, header menu + renombrado de tipos).
 - **Pendientes:** Épica 12 (auto-detección de fuente RSS vs HTML scraper).
 
 Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una. Antes de tocar código, **lee la sección *Patrones del código* de este archivo** para no redescubrir los molds.

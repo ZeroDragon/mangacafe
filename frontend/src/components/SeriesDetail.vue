@@ -15,7 +15,7 @@ Loader(v-if="!loaded" text="Loading series…")
         span.material-symbols-outlined photo
     .info
       .top
-        span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
+        span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Show' : 'Graphic novel' }}
         span.badge.pending(v-if="pendingItems.length") {{ pendingItems.length }} pending
       h1.name {{ series.name }}
       .last-read Last read: {{ series.last_read || 'No data' }}

@@ -37,8 +37,8 @@ export default {
       return this.to || { path: `/series/${this.series.id}` }
     },
     badgeLabel () {
-      if (this.series.type === 'anime') return 'Anime'
-      if (this.series.type === 'manga') return 'Manga'
+      if (this.series.type === 'anime') return 'Show'
+      if (this.series.type === 'manga') return 'Graphic novel'
       if (this.series.type === 'reel') return 'Reels'
       return this.series.type
     },

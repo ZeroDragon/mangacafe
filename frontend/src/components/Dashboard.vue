@@ -72,8 +72,8 @@ import SeriesCard from './SeriesCard.vue'
 
 const FILTERS = [
   { key: 'pending', label: 'Pending' },
-  { key: 'manga', label: 'Manga' },
-  { key: 'anime', label: 'Anime' }
+  { key: 'manga', label: 'Graphic novel' },
+  { key: 'anime', label: 'Show' }
 ]
 
 export default {

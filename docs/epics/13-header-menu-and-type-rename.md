@@ -1,6 +1,6 @@
 # Épica 13 — Reorganización del header + renombrado de tipos
 
-**Estado:** `[PENDING]`
+**Estado:** `[DONE]`
 **Objetivo:** Dos cambios visuales que no tocan el modelo de datos: (1) el header pierde el link directo a Crunchyroll y gana un **menú de usuario** (click sobre el username) que agrupa "Sync Crunchyroll" y "Logout"; (2) las etiquetas visibles de tipos dejan de ser `Anime`/`Manga` y pasan a ser **`Show`/`Graphic novel`** para englobar otras clases de series y comics. Los valores internos de la columna `series.type` (`'anime'`, `'manga'`) **no cambian** — es un rename puramente cosmético de la UI.
 
 **Depende de:** Épica 2 (auth/header), Épica 5 (dashboard/filtros), Épica 3 (SeriesForm).
@@ -108,34 +108,34 @@ Ninguna. Es un rename de UI puro.
 ## Tareas
 
 ### Header
-- [ ] `AppHeader.vue`: quitar `router-link` a `/crunchyroll` de `nav.links`.
-- [ ] `AppHeader.vue`: convertir `.user` en `.user-menu` con dropdown (toggle por click, close-on-outside-click, close-on-navigate).
-- [ ] `AppHeader.vue`: items del dropdown → "Sync Crunchyroll" (`/crunchyroll`) + "Logout".
-- [ ] `AppHeader.vue`: estilos del dropdown (absolute, right-aligned, z-index, separadores hover).
-- [ ] `AppHeader.vue`: responsive — el menón funciona con solo iconos en mobile.
+- [x] `AppHeader.vue`: quitar `router-link` a `/crunchyroll` de `nav.links`.
+- [x] `AppHeader.vue`: convertir `.user` en `.user-menu` con dropdown (toggle por click, close-on-outside-click, close-on-navigate).
+- [x] `AppHeader.vue`: items del dropdown → "Sync Crunchyroll" (`/crunchyroll`) + "Logout".
+- [x] `AppHeader.vue`: estilos del dropdown (absolute, right-aligned, z-index, separadores hover).
+- [x] `AppHeader.vue`: responsive — el menón funciona con solo iconos en mobile.
 
 ### Renombrado
-- [ ] `Dashboard.vue`: labels de filtros → "Show" / "Graphic novel".
-- [ ] `SeriesCard.vue`: `badgeLabel()` → "Show" / "Graphic novel".
-- [ ] `SeriesDetail.vue`: type-badge → "Show" / "Graphic novel".
-- [ ] `SeriesForm.vue`: toggle buttons → "Show" / "Graphic novel"; placeholder de feed genérico.
+- [x] `Dashboard.vue`: labels de filtros → "Show" / "Graphic novel".
+- [x] `SeriesCard.vue`: `badgeLabel()` → "Show" / "Graphic novel".
+- [x] `SeriesDetail.vue`: type-badge → "Show" / "Graphic novel".
+- [x] `SeriesForm.vue`: toggle buttons → "Show" / "Graphic novel"; placeholder de feed genérico.
 
 ### Tests
-- [ ] `smoke-series-crud.mjs`: revisar que los asserts que leen etiquetas de UI (si los hay) sigan pasando. Nota: los smoke tests actuales usan los valores internos `'anime'`/`'manga'` (no las etiquetas), así que no deberían romperse — verificar.
+- [x] `smoke-series-crud.mjs`: revisar que los asserts que leen etiquetas de UI (si los hay) sigan pasando. Nota: los smoke tests actuales usan los valores internos `'anime'`/`'manga'` (no las etiquetas), así que no deberían romperse — verificar.
 
 ## Verificación
 
-- [ ] El nav del header tiene solo: Dashboard, Series, Reels (+ botón "New" + menu usuario).
-- [ ] Click sobre el username abre un dropdown con "Sync Crunchyroll" y "Logout".
-- [ ] Click fuera del dropdown lo cierra.
-- [ ] Navegar a un item del dropdown lo cierra.
-- [ ] En mobile (<=560px), el menú se abre con el icono `person` y muestra los items con labels completos.
-- [ ] En el dashboard, los filtros dicen "Show" y "Graphic novel" (no "Anime"/"Manga").
-- [ ] Las cards de series muestran el badge "Show" o "Graphic novel".
-- [ ] El detalle de serie muestra el badge correcto.
-- [ ] El formulario de alta/edición tiene toggles "Show" / "Graphic novel".
-- [ ] El backend sigue aceptando `type: 'anime'`/`'manga'` (no cambió la validación).
-- [ ] El card de Reels en el dashboard sigue mostrando el badge "Reels" (no afectado).
+- [x] El nav del header tiene solo: Dashboard, Series, Reels (+ botón "New" + menu usuario).
+- [x] Click sobre el username abre un dropdown con "Sync Crunchyroll" y "Logout".
+- [x] Click fuera del dropdown lo cierra.
+- [x] Navegar a un item del dropdown lo cierra.
+- [x] En mobile (<=560px), el menú se abre con el icono `person` y muestra los items con labels completos.
+- [x] En el dashboard, los filtros dicen "Show" y "Graphic novel" (no "Anime"/"Manga").
+- [x] Las cards de series muestran el badge "Show" o "Graphic novel".
+- [x] El detalle de serie muestra el badge correcto.
+- [x] El formulario de alta/edición tiene toggles "Show" / "Graphic novel".
+- [x] El backend sigue aceptando `type: 'anime'`/`'manga'` (no cambió la validación).
+- [x] El card de Reels en el dashboard sigue mostrando el badge "Reels" (no afectado).
 
 ## Cómo reproducir la verificación
 
