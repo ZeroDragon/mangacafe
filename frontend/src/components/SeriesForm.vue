@@ -1,5 +1,5 @@
 <template lang="pug">
-.series-form
+.series-form(:class="{ 'with-preview': hasPreview }")
   h1 {{ isEdit ? 'Edit series' : 'New series' }}
   form.card(@submit.prevent="submit")
     label
@@ -65,7 +65,7 @@
         span {{ preview.loading ? 'Loading…' : 'Preview' }}
       button.cancel(type="button" @click="$router.push('/series')") Cancel
     p.error(v-if="error") {{ error }}
-  .preview-panel(v-if="preview.items.length || preview.error")
+  .preview-panel(v-if="hasPreview")
     .preview-header
       span.count(v-if="preview.count") {{ preview.count }} items found
       span.error(v-if="preview.error") {{ preview.error }}
@@ -103,6 +103,9 @@ export default {
   computed: {
     isEdit () {
       return !!this.$route.params.id
+    },
+    hasPreview () {
+      return this.preview.items.length > 0 || !!this.preview.error
     },
     canPreview () {
       return this.form.type === 'manga' &&
@@ -272,6 +275,32 @@ export default {
 .series-form
   max-width 520px
   margin 24px auto
+  &.with-preview
+    max-width 1100px
+    display flex
+    flex-wrap wrap
+    gap 24px
+    align-items flex-start
+    h1
+      flex-basis 100%
+    form.card
+      flex 0 0 520px
+    .preview-panel
+      flex 1 1 0
+      max-width 480px
+      margin-top 0
+      position sticky
+      top 24px
+  @media (max-width 1000px)
+    &.with-preview
+      max-width 520px
+      flex-direction column
+      form.card
+        flex none
+      .preview-panel
+        max-width none
+        margin-top 16px
+        position static
   h1
     font-weight 300
     margin-bottom 16px
