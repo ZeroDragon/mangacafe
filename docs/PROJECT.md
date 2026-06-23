@@ -32,6 +32,7 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 9. **Indicador de progreso:** el "último leído/visto" es el `title` del último item visto en `series.last_read` (string, nullable), recalculado solo al marcar items visto/no-visto. `NULL` ⇒ "No data". Se elimina `current_chapter` (dato zombie) (Épica 10).
 10. **Reels como tabla aparte:** los reels de FB se guardan en `reels` (no en `series`); marcar visto es por-item sin cascada; watch-later / ToDo; un único card fijo en el dashboard (Épica 11).
 11. **`rss_url` acepta RSS o HTML:** el campo `series.rss_url` de un manga admite un feed RSS/Atom o la URL de la página de la serie en un sitio soportado (comivex.com al iniciar). El refresher detecta el tipo automáticamente y rutea al parser o al scraper del proveedor. Sin columna nueva: detección por contenido/host (Épica 12).
+12. **Etiquetas de `type` en la UI:** la UI muestra **"Show"** para `type='anime'` y **"Graphic novel"** para `type='manga'`. Los valores internos de `series.type` (`'anime'`, `'manga'`) **no cambian** — son ids estables que persisten en la DB, se usan en queries, dispatch de feeds y clases CSS. El rename es exclusivamente cosmético (Épica 13).
 
 ## Stack conservado
 
@@ -54,8 +55,9 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 8 | Deploy e infra | `[DONE]` | [epics/08-deploy.md](epics/08-deploy.md) |
 | 9 | Motor RSS para mangas | `[DONE]` | [epics/09-manga-rss.md](epics/09-manga-rss.md) |
 | 10 | Indicador de "último leído" como string | `[DONE]` | [epics/10-last-read-string.md](epics/10-last-read-string.md) |
-| 11 | Soporte para Facebook Reels | `[PENDING]` | [epics/11-facebook-reels.md](epics/11-facebook-reels.md) |
+| 11 | Soporte para Facebook Reels | `[DONE]` | [epics/11-facebook-reels.md](epics/11-facebook-reels.md) |
 | 12 | Auto-detección de fuente (RSS vs HTML scraper) | `[PENDING]` | [epics/12-source-autodetect.md](epics/12-source-autodetect.md) |
+| 13 | Reorganización del header + renombrado de tipos | `[PENDING]` | [epics/13-header-menu-and-type-rename.md](epics/13-header-menu-and-type-rename.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 

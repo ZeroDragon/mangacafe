@@ -34,6 +34,7 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 | 9 | Indicador de progreso | El "último leído/visto" es el **`title` del último item visto** guardado en `series.last_read` (**string, nullable**), no un número de capítulo manual. Se recalcula solo al marcar items visto/no-visto. `NULL` ⇒ se muestra como **"No data"**. `series.current_chapter` se elimina por completo (dato zombie) (Épica 10) |
 | 10 | Reels como tabla aparte | Los reels de FB se guardan en `reels` (no en `series`). Marcar visto es **por-item sin cascada**. Funciona como watch-later / ToDo: pendientes arriba, vistos en sección separada. El dashboard muestra un único card con thumbnail fijo (Épica 11) |
 | 11 | `rss_url` acepta RSS **o** HTML | El campo `series.rss_url` de un manga admite (a) un feed RSS/Atom o (b) la URL de la página de la serie en un sitio soportado (comivex.com al iniciar). El refresher detecta el tipo automáticamente y rutea al parser o al scraper del proveedor. **No** se agrega una columna nueva: la detección es por contenido/host, no por un flag en la DB (Épica 12) |
+| 12 | Etiquetas de `type` en la UI | La UI muestra **"Show"** para `type='anime'` y **"Graphic novel"** para `type='manga'`. Los valores internos de `series.type` (`'anime'`, `'manga'`) **no cambian** — son ids estables usados en queries, dispatch de feeds y clases CSS. El rename es exclusivamente cosmético (Épica 13) |
 
 ---
 
@@ -63,6 +64,13 @@ Tracker personal de lectura de mangas y episodios de anime vistos. Reemplazo com
 10. **Commits:** solo cuando el usuario lo pida explícitamente.
 11. **Atribuciones en commits:** **NUNCA** agregar líneas de atribución tipo `💘 Generated with Crush`, `Assisted-by: ... via Crush <crush@charm.land>`, ni ninguna firma/co-authored-by de la herramienta o del modelo. El mensaje debe contener solo el subject + body del cambio. Si se reescribe historial, omitir las atribuciones existentes.
 12. **Idioma:** comunicación con el usuario en **español mexicano** (tú, no vos). Sin voseo en conjugación ni acentos (p. ej. "lee", "mira", "prueba"; no "leé", "mirá", "probá"). Los comentarios y strings de código pueden ir en español neutro o en inglés según el archivo.
+13. **Mantener la documentación al día:** cada cambio de código (nueva tabla, nuevo endpoint, nuevo modelo, nuevo componente, nuevo env var, cambio en middleware) DEBE actualizar **en el mismo cambio**:
+    - `docs/AGENTS.md` → sección *Mapa rápido de archivos* (si se agrega/quita un archivo) y *Decisiones de producto* (si hay una decisión nueva).
+    - `docs/ARCHITECTURE.md` → secciones *Rutas*, *Schema de DB*, *Mapa de módulos* y *Env vars* según lo que se toque.
+    - `docs/PROJECT.md` → tabla de *Épicas* (estado) y *Decisiones* (si aplica).
+    - `env_example` → variables nuevas, con una línea por var en el formato `KEY "descripción"`.
+    
+    No esperar al final de la épica: la doc debe quedar correcta **después de cada paso**, porque la próxima sesión de un agente va a leerla para arrancar y se ahorra volver a descubrir lo que ya está escrito.
 
 ---
 
@@ -88,44 +96,195 @@ cd frontend && npm install && API=http://localhost:3000 npm run dev
 
 ## Mapa rápido de archivos
 
+> **Mantener al día** (regla 13). Estructura actual (post-Épica 11).
+
 ```
 backend/
-  ecosystem.config.cjs          # PM2: app "mangacafe", cron_restart diario (ajustar a 6h en Épica 8)
-  package.json                 # deps: express, sqlite3, pug, bcrypt, axios
+  package.json                 # type:module; deps: axios, bcrypt, express, pug, sqlite3, xml2js
+  ecosystem.config.cjs          # PM2: app "mangacafe", cron_restart diario
   src/
-    index.mjs                  # Express app + rutas + middlewares verifyToken/getUser (exportados)
+    index.mjs                  # Express app + rutas + middlewares verifyToken/getUser/resolveUserId (exportados)
     auth.mjs                   # JWT custom (HMAC-SHA256, expira 1 año)
+    refresher.mjs              # Scheduler de feeds (6h) + refreshSeries/refreshAll/refreshByUser (dispatch por type)
+    imdb.mjs                   # Scraper de IMDB vía GraphQL interno → items [{guid,title,link,pub_date}]
+    rss.mjs                    # Parser RSS 2.0 / Atom → items (xml2js)
+    crunchyroll.mjs            # Sync externo on-demand (watchlist + resolver ttId)
+    reel_fetch.mjs             # Detección best-effort del título de un reel (og:title regex, fallback null)
     models/
-      db.mjs                   # conexión SQLite + createTable() + schema de users
-      user.mjs                 # signup/login/getBy/update (bcrypt, cost 10)
+      db.mjs                   # conexión SQLite + createTable/createIndex/addColumnIfMissing/dropColumnIfExists + migraciones
+      user.mjs                 # signup/login/getBy/update (bcrypt cost 10)
+      series.mjs               # CRUD series (ALLOWED_FIELDS, ownership por user_id)
+      series_item.mjs          # feed items: insertMany (OR IGNORE), markSeen/markUnseen (CASCADA), markAllSeen, recomputeLastRead, dashboardByUser
+      reel.mjs                 # CRUD reels (watch-later): sin cascada, sin last_read, pendingCountByUser
+  tests/                       # smoke tests (uno por épica); cada uno levanta su propio server en puerto efímero
+    smoke-auth.mjs             # Épica 2
+    smoke-data-model.mjs       # Épica 1
+    smoke-series-crud.mjs      # Épica 3
+    smoke-imdb-engine.mjs      # Épica 4
+    smoke-dashboard.mjs        # Épica 5 (incluye reelsPending desde Épica 11)
+    smoke-series-detail.mjs    # Épica 6
+    smoke-rss-engine.mjs       # Épica 9
+    smoke-reels.mjs            # Épica 11
+
 frontend/
   index.html                   # entry HTML, carga styles.styl + fonts, monta #app
   vite.config.js               # plugin vue + dotPathFixPlugin + define __API__
   src/
-    main.js                    # createApp(App) + router + plugin storage + registro de onUnauthorized
-    router.js                  # rutas (/login, /dashboard) + guard global de auth
-    api.js                     # helper axios (__API__, Authorization, rotación de token, handler 401)
-    App.vue                    # root: AppHeader (si autenticado) + router-view
-    storage.js                 # plugin $storage (reactive store simple, sin lógica de MangaDex)
-    styles.styl                # variables CSS globales
+    main.js                    # createApp(App) + router + plugins $storage / $toast + registro onUnauthorized
+    router.js                  # rutas: /login /dashboard /series /series/new /series/:id /series/:id/edit /crunchyroll /reels + guard auth
+    api.js                     # axios con __API__, Authorization, rotación de token, handler 401
+    App.vue                    # root: AppHeader (si autenticado) + router-view + Toasts
+    storage.js                 # plugin $storage (reactive simple, sin persistencia)
+    toast.js                   # plugin $toast + manager {info, success, error, dismiss}
+    styles.styl                # variables CSS globales (--background --foreground --primary --danger)
     components/
-      home.vue                 # placeholder (sin uso; Épica 5 lo reemplaza)
-      Login.vue                # form con toggle login/signup (Épica 2)
-      Dashboard.vue            # placeholder protegido (Épica 5)
-      AppHeader.vue            # header con username + logout (Épica 2)
+      Login.vue                # form toggle login/signup (Épica 2)
+      AppHeader.vue            # nav: Dashboard / Series / Crunchyroll / Reels + username + logout (Épica 2, extendido)
+      Loader.vue               # spinner + esqueleto reutilizable
+      Toasts.vue               # contenedor de toasts (consume toast.js)
+      Dashboard.vue            # grid de SeriesCard + filtros + refresh + card sintético de Reels (Épica 5, extendido en 11)
+      SeriesCard.vue           # card reutilizable: props {series, to?}; badges anime/manga/reel (Épica 5, extendido en 11)
+      SeriesList.vue           # listado CRUD de series
+      SeriesForm.vue           # alta/edición (dispatch imdb_url/rss_url por type)
+      SeriesDetail.vue         # detalle + feed + cascada seen/unsee
+      Crunchyroll.vue          # sync externo on-demand
+      Reels.vue                # ToDo watch-later: To watch / Watched + form + edit inline + toggle seen (Épica 11)
+      home.vue                 # placeholder sin uso (legacy Épica 0)
+  public/
+    reel-thumb.png             # thumbnail fijo del card y los items de Reels (Épica 11)
+
+dotenv.mjs                     # loader custom: formato "KEY value" separado por UN espacio
+env_example                    # documenta vars: PORT DB_PATH API SECRET IMDB_* RSS_* REEL_* BUILD_OUT_DIR
+
 docs/
-  AGENTS.md                    # ESTE ARCHIVO
-  PROJECT.md                   # visión, decisiones, épicas (índice)
-  ARCHITECTURE.md              # detalle técnico del scaffolding conservado
+  AGENTS.md                    # ESTE ARCHIVO (contexto + reglas)
+  PROJECT.md                   # visión, decisiones de producto, tabla de épicas
+  ARCHITECTURE.md              # detalle técnico: schema DB, rutas, módulos, env
   epics/
-    00-cleanup.md ... 08-deploy.md
+    00-cleanup.md ... 12-source-autodetect.md
 ```
+
+---
+
+## Patrones del código
+
+Para no tener que leer todo el código cada vez. Estos son los molds que ya funcionan; una feature nueva debe seguirlos.
+
+### Modelo nuevo (`backend/src/models/<name>.mjs`)
+
+```js
+import db from './db.mjs'
+
+const ALLOWED_FIELDS = ['url', 'title']  // whitelist para update
+
+const create = (userId, { url, title }) => {
+  return new Promise(resolve => {
+    db.run(
+      `INSERT OR IGNORE INTO <table> (user_id, url, title) VALUES (?, ?, ?)`,
+      [userId, url, title ?? null],
+      function (err) {                         // function () para tener this.lastID/this.changes
+        if (err) return resolve({ error: err })
+        if (this.changes === 0) return resolve({ skipped: true })  // UNIQUE violado
+        resolve({ success: true, id: this.lastID })
+      }
+    )
+  })
+}
+
+// listByUser/update/remove: SIEMPRE WHERE id = ? AND user_id = ? (ownership)
+```
+
+- Devuelve objetos `{success|error|skipped|data}`, nunca lanza.
+- Ownership en todas las mutaciones: `WHERE id = ? AND user_id = ?`. Si `this.changes === 0`, resolver con `{ error: 'X not found or not owned' }`.
+- Para update: armar `setClauses` iterando `ALLOWED_FIELDS`, agregar `updated_at = strftime('%s','now')`.
+
+### Ruta protegida nueva (`backend/src/index.mjs`)
+
+```js
+app.post('/api/endpoint', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  // res.userId  → filtrar SIEMPRE por este user_id
+  // res.newToken → incluir en el body de respuesta (rotación de token)
+  const result = await model.method(res.userId, ...)
+  if (result.error) return res.status(500).json({ error: result.error })
+  res.json({ ...result, token: res.newToken })
+})
+```
+
+- Tres middlewares en cadena: `verifyToken` (firma), `getUser` (deja `res.username`), `resolveUserId` (deja `res.userId`).
+- Validar body con un helper `validateX(body, partial=false)` que devuelva array de mensajes; si tiene length, `400`.
+- Status: `400` validación, `404` not found / not owned, `500` error de DB.
+
+### Smoke test (`backend/tests/smoke-<feature>.mjs`)
+
+```js
+import '../../dotenv.mjs'
+import http from 'http'
+import axios from 'axios'
+import db, { ready } from '../src/models/db.mjs'
+import { app } from '../src/index.mjs'
+
+await ready  // garantiza el schema antes de queryar
+
+const server = http.createServer(app)
+await new Promise(r => server.listen(0, r))              // puerto efímero
+const baseURL = `http://localhost:${server.address().port}`
+const request = (method, path, body, token) => axios({
+  method, url: baseURL + path, data: body,
+  headers: token ? { Authorization: `Bearer ${token}` } : {},
+  validateStatus: () => true                              // no lanzar: asserts en el test
+})
+
+// Setup: dos usuarios (A dueña, B para ownership check)
+// Flujo: 401 sin token → 400 validación → 200 happy path → 404 ownership
+
+await new Promise(r => server.close(r))
+db.close()
+```
+
+- Cubrir: auth (sin token → 401, token mal → 403), validación (400), happy path (200), ownership (B no ve/edita/borra de A → 404), rotación de token en respuestas.
+- `validateStatus: () => true` para que axios no lance y podamos comparar status.
+- Correr: `cd backend && DB_PATH=./test.sqlite SECRET=test node tests/smoke-X.mjs`.
+
+### Componente Vue (Options API + Pug + Stylus)
+
+```vue
+<template lang="pug">
+.nombre
+  // pug aquí, indentación sensible
+</template>
+
+<script>
+import api from '../api.js'
+export default {
+  name: 'X',
+  data () { return { /* estado */ } },
+  computed: { /* derivados */ },
+  async mounted () { await this.fetch() },
+  methods: {
+    async fetch () {
+      try { const res = await api.get('/api/x'); this.items = res.data.data || [] }
+      catch (e) { this.$toast.error('Could not load') }
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+.nombre
+  // stylus con indentación; variables var(--primary) etc.
+</style>
+```
+
+- Options API (sin `<script setup>`).
+- `api` inyecta `Authorization` y rota el token automáticamente; consume `res.data.data` y `res.data.token` (ignorado por el interceptor).
+- `$toast` disponible globalmente: `$toast.success|error|info(msg)`.
+- Registrar ruta nueva en `router.js` con lazy import: `{ path: '/x', component: () => import('./components/X.vue') }`.
 
 ---
 
 ## Estado actual y próximos pasos
 
-- **Completada:** Épica 0 (limpieza del scaffolding). Backend arranca, `signup`/`login` funcionan, `vite build` compila.
-- **Próxima sugerida:** Épica 1 (modelo de datos: tablas `series` y `series_items`) o Épica 2 (auth con bcrypt). Recomendado hacer **Épica 1 primero** porque fija el contrato de datos.
+- **Completadas:** Épicas 0 a 11 (limpieza, modelo de datos, auth, CRUD de series, IMDB, dashboard, detalle, polish, deploy, RSS, `last_read` string, Facebook Reels).
+- **Pendientes:** Épica 12 (auto-detección de fuente RSS vs HTML scraper).
 
-Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una.
+Lee `PROJECT.md` para el índice de épicas y `epics/NN-*.md` para el detalle de cada una. Antes de tocar código, **lee la sección *Patrones del código* de este archivo** para no redescubrir los molds.
