@@ -11,14 +11,14 @@ article.card(:class="{ error: series.last_error }")
       span.material-symbols-outlined photo
   .body
     .top
-      span.type-badge(:class="series.type") {{ series.type === 'anime' ? 'Anime' : 'Manga' }}
+      span.type-badge(:class="series.type") {{ badgeLabel }}
       span.badge.pending(v-if="series.pending > 0") {{ series.pending }}
       span.badge.error(v-else-if="series.last_error" title="Feed error")
         span.material-symbols-outlined error
     h3.name
-      router-link(:to="{ path: `/series/${series.id}` }") {{ series.name }}
+      router-link(:to="cardTo") {{ series.name }}
     .line.latest(v-if="series.pending > 0") Latest: {{ series.last_item_title || '—' }}
-    .line.last-read Last read: {{ series.last_read || 'No data' }}
+    .line.last-read(v-if="showLastRead") Last read: {{ series.last_read || 'No data' }}
     .error-msg(v-if="series.last_error" :title="series.last_error") Feed: {{ series.last_error }}
 </template>
 
@@ -26,7 +26,26 @@ article.card(:class="{ error: series.last_error }")
 export default {
   name: 'SeriesCard',
   props: {
-    series: { type: Object, required: true }
+    series: { type: Object, required: true },
+    // Override del router-link del nombre. Default: /series/:id.
+    // Permite reusar el card para secciones no-series (e.g. Reels → /reels).
+    to: { type: [String, Object], default: '' }
+  },
+  computed: {
+    cardTo () {
+      // `to` tiene prioridad; si no, default al detalle de la serie.
+      return this.to || { path: `/series/${this.series.id}` }
+    },
+    badgeLabel () {
+      if (this.series.type === 'anime') return 'Anime'
+      if (this.series.type === 'manga') return 'Manga'
+      if (this.series.type === 'reel') return 'Reels'
+      return this.series.type
+    },
+    // Para reels no aplica el indicador de "Last read" (no hay progreso).
+    showLastRead () {
+      return this.series.type !== 'reel'
+    }
   },
   methods: {
     onCoverError (e) {
@@ -90,6 +109,9 @@ export default {
   &.manga
     color #9cf
     background rgba(153,204,255,0.1)
+  &.reel
+    color #fc9
+    background rgba(255,204,153,0.12)
 .badge
   font-size 12px
   padding 2px 8px

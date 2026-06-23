@@ -1,6 +1,6 @@
 # Épica 11 — Soporte para Facebook Reels (watch-later)
 
-**Estado:** `[PENDING]`
+**Estado:** `[DONE]`
 **Objetivo:** Nueva sección "Reels" que funciona como **watch-later / ToDo list** independiente del modelo de series. El usuario pega la URL de un reel de Facebook que quiere revisar después; opcionalmente le pone título; y lo va marcando como visto sin orden cronológico. El dashboard muestra un único card (con thumbnail fijo de FB) indicando cuántos reels faltan por ver.
 
 **Depende de:** Épicas 1 (multiusuario + helpers DB), 5 (dashboard).
@@ -198,36 +198,36 @@ Ninguna. Tabla nueva `reels`; bases existentes la crean al boot vía `createTabl
 ## Tareas
 
 ### Backend
-- [ ] `backend/src/models/db.mjs`: `createTable('reels', …)` + índices en el `Promise.all` del `ready`.
-- [ ] `backend/src/models/reel.mjs` (nuevo): `create`, `listByUser`, `update`, `remove`, `markSeen`, `markUnseen`, `pendingCountByUser`. Ownership en todas.
-- [ ] `backend/src/reel_fetch.mjs` (nuevo): `detectTitle(url)` best-effort (`og:title` regex sobre GET con UA realista, fallback `null`).
-- [ ] `backend/src/index.mjs`: rutas `/api/reels` (GET/POST/PUT/DELETE + `/seen` toggle); `validateReel`; ampliar `GET /api/dashboard` con `summary.reelsPending`.
-- [ ] `env_example`: `REEL_USER_AGENT`, `REEL_TIMEOUT`.
+- [x] `backend/src/models/db.mjs`: `createTable('reels', …)` + índices en el `Promise.all` del `ready`.
+- [x] `backend/src/models/reel.mjs` (nuevo): `create`, `listByUser`, `update`, `remove`, `markSeen`, `markUnseen`, `pendingCountByUser`. Ownership en todas.
+- [x] `backend/src/reel_fetch.mjs` (nuevo): `detectTitle(url)` best-effort (`og:title` regex sobre GET con UA realista, fallback `null`).
+- [x] `backend/src/index.mjs`: rutas `/api/reels` (GET/POST/PUT/DELETE + `/seen` toggle); `validateReel`; ampliar `GET /api/dashboard` con `summary.reelsPending`.
+- [x] `env_example`: `REEL_USER_AGENT`, `REEL_TIMEOUT`.
 
 ### Frontend
-- [ ] `frontend/public/reel-thumb.png`: descargar desde la URL de popsters y commitear.
-- [ ] `frontend/src/router.js`: ruta `/reels`.
-- [ ] `frontend/src/components/AppHeader.vue`: link "Reels".
-- [ ] `frontend/src/components/SeriesCard.vue`: prop `to` (override del router-link) para que el card de reels linkee a `/reels`.
-- [ ] `frontend/src/components/Dashboard.vue`: inyectar un SeriesCard sintético para Reels al inicio del grid usando `summary.reelsPending` y `/reel-thumb.png`.
-- [ ] `frontend/src/components/Reels.vue` (nuevo): ToDo de dos secciones (To watch / Watched) con form de alta, edit inline de url/título, toggle seen.
+- [x] `frontend/public/reel-thumb.png`: descargar desde la URL de popsters y commitear.
+- [x] `frontend/src/router.js`: ruta `/reels`.
+- [x] `frontend/src/components/AppHeader.vue`: link "Reels".
+- [x] `frontend/src/components/SeriesCard.vue`: prop `to` (override del router-link) + badge "Reels" + ocultar "Last read" para reels.
+- [x] `frontend/src/components/Dashboard.vue`: inyectar un SeriesCard sintético para Reels al inicio del grid usando `summary.reelsPending` y `/reel-thumb.png`.
+- [x] `frontend/src/components/Reels.vue` (nuevo): ToDo de dos secciones (To watch / Watched) con form de alta, edit inline de url/título, toggle seen.
 
 ### Tests
-- [ ] `backend/tests/smoke-reels.mjs` (nuevo): cubre POST/PUT/DELETE/seen/unsee + ownership (B no ve/edita/borra reels de A) + `UNIQUE(user_id, url)` (segundo POST misma URL → `skipped`) + `pendingCountByUser`.
-- [ ] `backend/tests/smoke-dashboard.mjs`: ampliar para verificar `summary.reelsPending` (crear 3 reels, 1 visto → `reelsPending = 2`).
-- [ ] Title detection: smoke con URL pública de prueba para cubrir tanto el happy path (encuentra `og:title`) como el fallback (`title = null` cuando el host bloquea). Idealmente mockear `axios.get` para no depender de FB en CI.
+- [x] `backend/tests/smoke-reels.mjs` (nuevo): cubre POST/PUT/DELETE/seen/unsee + ownership (B no ve/edita/borra reels de A) + `UNIQUE(user_id, url)` (segundo POST misma URL → `skipped`) + `pendingCountByUser`.
+- [x] `backend/tests/smoke-dashboard.mjs`: ampliar para verificar `summary.reelsPending` (crear 3 reels, 1 visto → `reelsPending = 2`).
+- [x] Title detection: smoke con `extractFromHtml` (sin red) para cubrir happy path (encuentra `og:title`), login wall trivial y fallback (`title = null`).
 
 ## Verificación
 
-- [ ] `POST /api/reels` con URL válida y sin título → crea con `title = null` o con `og:title` si el fetch lo encontró.
-- [ ] `POST /api/reels` con la misma URL otra vez → `skipped: true` (no duplica).
-- [ ] `POST /api/reels/:id/seen` cambia el flag y **no** toca otros reels (sin cascada).
-- [ ] `DELETE /api/reels/:id/seen` lo vuelve a pendiente.
-- [ ] `PUT /api/reels/:id` actualiza url y/o título; rechaza campos fuera del whitelist.
-- [ ] Ownership: B no ve/edita/borra/marca reels de A (404 en todos).
-- [ ] `GET /api/dashboard` incluye `summary.reelsPending` correcto.
-- [ ] Card de Reels aparece en el dashboard con la thumbnail fija, count de pendientes y link a `/reels`.
-- [ ] `/reels` muestra dos secciones (To watch / Watched), el form de alta, edit de items y el toggle entre secciones al marcar.
+- [x] `POST /api/reels` con URL válida y sin título → crea con `title = null` o con `og:title` si el fetch lo encontró.
+- [x] `POST /api/reels` con la misma URL otra vez → `skipped: true` (no duplica).
+- [x] `POST /api/reels/:id/seen` cambia el flag y **no** toca otros reels (sin cascada).
+- [x] `DELETE /api/reels/:id/seen` lo vuelve a pendiente.
+- [x] `PUT /api/reels/:id` actualiza url y/o título; rechaza campos fuera del whitelist.
+- [x] Ownership: B no ve/edita/borra/marca reels de A (404 en todos).
+- [x] `GET /api/dashboard` incluye `summary.reelsPending` correcto.
+- [x] Card de Reels aparece en el dashboard con la thumbnail fija, count de pendientes y link a `/reels`.
+- [x] `/reels` muestra dos secciones (To watch / Watched), el form de alta, edit de items y el toggle entre secciones al marcar.
 
 ## Cómo reproducir la verificación
 

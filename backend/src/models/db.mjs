@@ -144,6 +144,20 @@ export const ready = (async () => {
         CONSTRAINT series_items_series_FK FOREIGN KEY (series_id) REFERENCES series(id) ON DELETE CASCADE,
         CONSTRAINT series_items_uniq UNIQUE (series_id, guid)
       );
+    `),
+    // Épica 11: reels de FB como watch-later (sin feed, sin cascada, sin last_read).
+    createTable('reels', `
+      CREATE TABLE reels (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        url TEXT NOT NULL,
+        title TEXT,
+        seen INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+        CONSTRAINT reels_users_FK FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT reels_uniq UNIQUE (user_id, url)
+      );
     `)
   ])
   tables.forEach(result => { if (result.error) throw result.error })
@@ -153,7 +167,9 @@ export const ready = (async () => {
     createIndex('idx_series_user_type', 'CREATE INDEX idx_series_user_type ON series(user_id, type)'),
     createIndex('idx_series_last_checked', 'CREATE INDEX idx_series_last_checked ON series(last_checked_at)'),
     createIndex('idx_items_series', 'CREATE INDEX idx_items_series ON series_items(series_id)'),
-    createIndex('idx_items_series_unseen', 'CREATE INDEX idx_items_series_unseen ON series_items(series_id, seen)')
+    createIndex('idx_items_series_unseen', 'CREATE INDEX idx_items_series_unseen ON series_items(series_id, seen)'),
+    createIndex('idx_reels_user', 'CREATE INDEX idx_reels_user ON reels(user_id)'),
+    createIndex('idx_reels_user_unseen', 'CREATE INDEX idx_reels_user_unseen ON reels(user_id, seen)')
   ])
   indexes.forEach(result => { if (result.error) throw result.error })
 })()

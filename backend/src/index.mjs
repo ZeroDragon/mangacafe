@@ -3,9 +3,11 @@ import '../../dotenv.mjs'
 import user from './models/user.mjs'
 import series from './models/series.mjs'
 import seriesItem from './models/series_item.mjs'
+import reel from './models/reel.mjs'
 import refresher from './refresher.mjs'
 import Auth from './auth.mjs'
 import * as crunchyroll from './crunchyroll.mjs'
+import detectReelTitle from './reel_fetch.mjs'
 import { ready as dbReady } from './models/db.mjs'
 
 const app = express()
@@ -204,6 +206,9 @@ app.post('/api/series/:id/refresh', [verifyToken, getUser, resolveUserId], async
 app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, res) => {
   const { error, data } = await seriesItem.dashboardByUser(res.userId)
   if (error) return res.status(500).json({ error: 'Error fetching dashboard' })
+  // Épica 11: conteo de reels pendientes para el card de Reels.
+  const reelsRes = await reel.pendingCountByUser(res.userId)
+  const reelsPending = reelsRes.data || 0
   const items = (data || []).map(s => ({
     id: s.id,
     type: s.type,
@@ -225,9 +230,84 @@ app.get('/api/dashboard', [verifyToken, getUser, resolveUserId], async (_req, re
   const withUpdates = items.filter(s => s.hasUpdates).length
   res.json({
     data: items,
-    summary: { totalPending, withUpdates, total: items.length },
+    summary: { totalPending, withUpdates, total: items.length, reelsPending },
     token: res.newToken
   })
+})
+
+// --- Reels (Épica 11) ---
+// Watch-later / ToDo de URLs (típicamente reels de FB). Independiente del
+// modelo de series: sin feed, sin cascada al marcar visto, sin last_read.
+// Todas las rutas filtran por res.userId (aislamiento multiusuario).
+
+const validateReel = (body, partial = false) => {
+  const errors = []
+  const has = (k) => Object.prototype.hasOwnProperty.call(body, k)
+  if (!partial || has('url')) {
+    if (!isHttpUrl(body.url)) errors.push('url must be an http(s) URL')
+  }
+  if (has('title') && body.title !== null) {
+    if (typeof body.title !== 'string' || !body.title.trim()) {
+      errors.push('title must be a non-empty string or null')
+    }
+  }
+  return errors
+}
+
+app.get('/api/reels', [verifyToken, getUser, resolveUserId], async (_req, res) => {
+  const { error, data } = await reel.listByUser(res.userId)
+  if (error) return res.status(500).json({ error: 'Error fetching reels' })
+  res.json({ data, token: res.newToken })
+})
+
+app.post('/api/reels', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const errors = validateReel(req.body)
+  if (errors.length) return res.status(400).json({ error: errors.join('; ') })
+  const url = req.body.url.trim()
+  // Si el usuario no manda title, intenta detectarlo best-effort (og:title).
+  // El fetch nunca bloquea el alta: si falla o no encuentra nada → null.
+  let title = req.body.title != null ? req.body.title.trim() : null
+  if (!title) title = await detectReelTitle(url)
+  const result = await reel.create(res.userId, { url, title })
+  if (result.error) return res.status(500).json({ error: result.error })
+  if (result.skipped) return res.json({ skipped: true, token: res.newToken })
+  res.json({ id: result.id, title, token: res.newToken })
+})
+
+app.put('/api/reels/:id', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const errors = validateReel(req.body, true)
+  if (errors.length) return res.status(400).json({ error: errors.join('; ') })
+  const fields = {}
+  if (Object.prototype.hasOwnProperty.call(req.body, 'url')) {
+    fields.url = req.body.url.trim()
+  }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'title')) {
+    // Permitimos title: null explícito para "limpiar" el título.
+    fields.title = req.body.title != null ? req.body.title.trim() : null
+  }
+  const { error } = await reel.update(req.params.id, res.userId, fields)
+  if (error) return res.status(404).json({ error: 'Reel not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
+app.delete('/api/reels/:id', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { error } = await reel.remove(req.params.id, res.userId)
+  if (error) return res.status(404).json({ error: 'Reel not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
+// Marca un reel como visto. SIN cascada: sólo el item indicado cambia.
+app.post('/api/reels/:id/seen', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { error } = await reel.markSeen(req.params.id, res.userId)
+  if (error) return res.status(404).json({ error: 'Reel not found or not owned' })
+  res.json({ success: true, token: res.newToken })
+})
+
+// Desmarca un reel (visto -> pendiente). SIN cascada.
+app.delete('/api/reels/:id/seen', [verifyToken, getUser, resolveUserId], async (req, res) => {
+  const { error } = await reel.markUnseen(req.params.id, res.userId)
+  if (error) return res.status(404).json({ error: 'Reel not found or not owned' })
+  res.json({ success: true, token: res.newToken })
 })
 
 // --- Detalle de serie (Épica 6) ---

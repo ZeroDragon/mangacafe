@@ -13,6 +13,9 @@ header.app-header
     router-link(:to="{ path: '/crunchyroll' }")
       span.material-symbols-outlined sync
       span.label Crunchyroll
+    router-link(:to="{ path: '/reels' }")
+      span.material-symbols-outlined smart_display
+      span.label Reels
   .spacer
   button.add(@click="$router.push('/series/new')")
     span.material-symbols-outlined add

@@ -59,6 +59,10 @@
           v-for="s in errorItems"
           :key="s.id"
           :series="s")
+
+    // Card de Reels (Épica 11): sólo si hay pendientes. Va al final.
+    .reels-card-wrapper(v-if="summary.reelsPending > 0")
+      SeriesCard(:series="reelsCard" :to="{ path: '/reels' }")
 </template>
 
 <script>
@@ -103,6 +107,21 @@ export default {
     },
     errorItems () {
       return this.items.filter(s => s.last_error && this.matches(s))
+    },
+    reelsCard () {
+      // Objeto sintético para reutilizar SeriesCard como acceso a /reels.
+      // type='reel' le da un badge distinto y oculta la línea "Last read".
+      const pending = this.summary.reelsPending || 0
+      return {
+        id: 'reels',
+        type: 'reel',
+        name: 'Reels',
+        cover_url: '/reel-thumb.png',
+        pending,
+        last_item_title: pending > 0 ? `${pending} to watch` : null,
+        last_read: null,
+        last_error: null
+      }
     }
   },
   mounted () {
@@ -222,6 +241,11 @@ export default {
     &.active
       background var(--primary)
       border-color var(--primary)
+.reels-card-wrapper
+  display grid
+  grid-template-columns repeat(auto-fill, minmax(320px, 1fr))
+  margin-top 32px
+  gap 12px
 .grid
   display grid
   grid-template-columns repeat(auto-fill, minmax(320px, 1fr))

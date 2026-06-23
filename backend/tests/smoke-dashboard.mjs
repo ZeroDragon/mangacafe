@@ -8,6 +8,7 @@ import db, { ready } from '../src/models/db.mjs'
 import user from '../src/models/user.mjs'
 import series from '../src/models/series.mjs'
 import seriesItem from '../src/models/series_item.mjs'
+import reel from '../src/models/reel.mjs'
 import { app } from '../src/index.mjs'
 
 await ready
@@ -86,10 +87,13 @@ if (!dash.data.token) fail('falta token rotado')
 
 // summary
 const sum = dash.data.summary
-log(`summary: totalPending=${sum.totalPending} withUpdates=${sum.withUpdates} total=${sum.total}`)
+log(`summary: totalPending=${sum.totalPending} withUpdates=${sum.withUpdates} total=${sum.total} reelsPending=${sum.reelsPending}`)
 if (sum.totalPending !== 4) fail(`esperaba totalPending=4, vino ${sum.totalPending}`)
 if (sum.withUpdates !== 2) fail(`esperaba withUpdates=2, vino ${sum.withUpdates}`)
 if (sum.total !== 4) fail(`esperaba total=4, vino ${sum.total}`)
+// Épica 11: reelsPending debe existir (aún 0 si no hay reels)
+if (typeof sum.reelsPending !== 'number') fail(`reelsPending debería ser número, vino ${typeof sum.reelsPending}`)
+if (sum.reelsPending !== 0) fail(`esperaba reelsPending=0 (sin reels aún), vino ${sum.reelsPending}`)
 
 // Orden: pendientes primero
 if (items[0].pending < items[1].pending) fail('no está ordenado por pending DESC')
@@ -139,6 +143,20 @@ if (s1after.hasUpdates) fail('hasUpdates debería ser false tras seen-all')
 if (s1after.last_read !== 'Cap 103') fail(`last_read debería ser 'Cap 103' tras seen-all (último cronológico), vino ${s1after.last_read}`)
 if (sum.totalPending - 3 !== dash2.data.summary.totalPending) fail('summary.totalPending mal tras seen-all')
 log('  seen-all OK (pending=0, last_read=Cap 103, summary actualizado)')
+
+// --- Épica 11: reelsPending en el dashboard ---
+// Crear 3 reels para A, marcar 1 como visto → reelsPending debe ser 2.
+log('Épica 11: dashboard incluye reelsPending (3 reels, 1 visto -> 2)')
+const rl1 = await reel.create(u.id, { url: 'https://fb.watch/r1', title: 'uno' })
+const rl2 = await reel.create(u.id, { url: 'https://fb.watch/r2', title: 'dos' })
+const rl3 = await reel.create(u.id, { url: 'https://fb.watch/r3', title: 'tres' })
+await reel.markSeen(rl2.id, u.id)
+const dashReels = await request('get', '/api/dashboard', null, tokenA)
+if (dashReels.data.summary.reelsPending !== 2) {
+  fail(`reelsPending esperaba 2 (3 creados, 1 visto), vino ${dashReels.data.summary.reelsPending}`)
+} else {
+  log('  reelsPending OK (2)')
+}
 
 log('seen-all sobre serie ajena -> 404')
 const bSeen = await request('post', `/api/series/${s1.id}/seen-all`, null, tokenB)
