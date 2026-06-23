@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Levanta backend y frontend en paralelo para dev local.
-# Al hacer Ctrl+C mata limpiamente ambos procesos.
+# Levanta backend y frontend en una sesión de tmux con dos paneles lado a
+# lado, para poder ver los logs de AMBOS procesos simultáneamente (con el
+# script anterior solo se veían los del frontend).
+#
+# Atajos tmux dentro de la sesión:
+#   Ctrl+B D         → detach (deja corriendo; reattach con `mise run dev`)
+#   Ctrl+B Flecha    → mover el foco entre paneles
+#   Ctrl+C en panel  → detiene SOLO ese proceso; el panel queda abierto con
+#                      un shell para que lo relances manualmente cuando
+#                      quieras (ej. `npm start` otra vez).
 
 cd "$(dirname "$0")/../.."  # root del repo
 
@@ -21,27 +29,32 @@ fi
 [ -d backend/node_modules ] || (cd backend && npm install)
 [ -d frontend/node_modules ] || (cd frontend && npm install)
 
-# Limpieza al salir (Ctrl+C / kill)
-pids=()
-cleanup() {
-  echo
-  echo "dev: deteniendo backend y frontend…"
-  for pid in "${pids[@]}"; do
-    kill "$pid" 2>/dev/null || true
-  done
-  wait 2>/dev/null || true
-}
-trap cleanup EXIT INT TERM
+SESSION="mangacafe-dev"
+
+# Si la sesión ya existe, atachear (soporta re-ejecutar `mise run dev`)
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "dev: sesión '$SESSION' ya existe, atacheando…"
+  exec tmux attach -t "$SESSION"
+fi
 
 echo "dev: backend en http://localhost:3000  •  frontend en http://localhost:5173"
 echo "dev: DB en backend/local.sqlite (ambiente separado de test.sqlite)"
-echo "dev: Ctrl+C para detener"
+echo "dev: Ctrl+B D para detach · Ctrl+B Flecha para cambiar de panel"
 echo
 
-(cd backend && DB_PATH=./local.sqlite npm start) &
-pids+=("$!")
+# Panel izquierdo: backend. Creamos el panel con un shell plano y le
+# mandamos el comando vía send-keys: así el shell es el dueño del panel
+# y Ctrl+C solo interrumpe npm, sin cerrar el panel (queda listo para
+# relanzar `npm start` a mano cuando quieras).
+tmux new-session -d -s "$SESSION" -n dev -c "$PWD/backend"
+tmux send-keys -t "$SESSION" \
+  "DB_PATH=./local.sqlite npm start" Enter
 
-(cd frontend && API=http://localhost:3000 npm run dev) &
-pids+=("$!")
+# Panel derecho: frontend (mismo truco).
+tmux split-window -h -t "$SESSION" -c "$PWD/frontend"
+tmux send-keys -t "$SESSION" \
+  "API=http://localhost:3000 npm run dev" Enter
 
-wait
+# Atachear. Cuando todos los paneles mueren (Ctrl+C + exit), la sesión
+# termina y este comando retorna.
+exec tmux attach -t "$SESSION"
