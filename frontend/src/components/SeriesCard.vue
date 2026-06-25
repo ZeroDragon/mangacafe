@@ -8,7 +8,7 @@ article.card(:class="{ error: series.last_error }")
       referrerpolicy="no-referrer"
       @error="onCoverError")
     .cover-placeholder(v-else)
-      span.material-symbols-outlined photo
+      span.material-symbols-outlined {{ placeholderIcon }}
   .body
     .top
       span.type-badge(:class="series.type") {{ badgeLabel }}
@@ -39,8 +39,11 @@ export default {
     badgeLabel () {
       if (this.series.type === 'anime') return 'Show'
       if (this.series.type === 'manga') return 'Graphic novel'
-      if (this.series.type === 'reel') return 'Reels'
+      if (this.series.type === 'reel') return 'Bookmarks'
       return this.series.type
+    },
+    placeholderIcon () {
+      return this.series.type === 'reel' ? 'bookmark' : 'photo'
     },
     // Para reels no aplica el indicador de "Last read" (no hay progreso).
     showLastRead () {

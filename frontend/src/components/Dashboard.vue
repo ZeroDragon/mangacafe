@@ -115,10 +115,10 @@ export default {
       return {
         id: 'reels',
         type: 'reel',
-        name: 'Reels',
-        cover_url: '/reel-thumb.png',
+        name: 'Bookmarks',
+        cover_url: null,
         pending,
-        last_item_title: pending > 0 ? `${pending} to watch` : null,
+        last_item_title: pending > 0 ? `${pending} to review` : null,
         last_read: null,
         last_error: null
       }

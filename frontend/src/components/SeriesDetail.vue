@@ -53,7 +53,11 @@ Loader(v-if="!loaded" text="Loading series…")
         :key="it.id"
         :class="{ seen: it.seen }")
         .item-main
-          a.title(:href="itemLink(it)" target="_blank" rel="noopener") {{ it.title || '(untitled)' }}
+          a.title(
+            :href="itemLink(it)"
+            target="_blank"
+            rel="noopener"
+            @click="toggleItem(it)") {{ it.title || '(untitled)' }}
           .date {{ formatDate(it.pub_date, true) }}
         .item-actions
           a.icon-link(v-if="itemLink(it)" :href="itemLink(it)" target="_blank" rel="noopener" title="Open")
@@ -348,6 +352,7 @@ export default {
   overflow hidden
   text-overflow ellipsis
   white-space nowrap
+  cursor pointer
   &:hover
     text-decoration underline
 .date

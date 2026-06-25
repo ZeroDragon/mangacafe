@@ -2,13 +2,13 @@
 .reels
   header.bar
     .title
-      h1 Reels
+      h1 Bookmarks
       .summary(v-if="!loading")
         span {{ toWatch.length }} to watch
         span.dot ·
         span {{ watched.length }} watched
     .controls
-      span.material-symbols-outlined.smart smart_display
+      span.material-symbols-outlined.smart bookmark
 
   p.error(v-if="error") {{ error }}
 
@@ -19,8 +19,8 @@
       input(
         v-model="newUrl"
         type="url"
-        placeholder="Paste a reel URL (https://fb.watch/…)"
-        aria-label="Reel URL"
+        placeholder="Paste a bookmark URL"
+        aria-label="Bookmark URL"
         required)
     .field.title-field
       input(
@@ -40,9 +40,14 @@
       h2.section-title To watch ({{ toWatch.length }})
       ul.items
         li.item(v-for="r in toWatch" :key="r.id")
-          img.thumb(:src="'/reel-thumb.png'" alt="Reel" referrerpolicy="no-referrer")
+          span.material-symbols-outlined.thumb-glyph bookmark
           .item-body(v-if="editingId !== r.id")
-            a.title(:href="r.url" target="_blank" rel="noopener" :title="r.url") {{ displayTitle(r) }}
+            a.title(
+              :href="r.url"
+              target="_blank"
+              rel="noopener"
+              :title="r.url"
+              @click="toggleSeen(r)") {{ displayTitle(r) }}
             .url-fallback(v-if="!r.title") {{ shortUrl(r.url) }}
           .item-body.edit(v-else)
             input.edit-url(v-model="editUrl" type="url" placeholder="URL")
@@ -61,9 +66,14 @@
       h2.section-title.muted Watched ({{ watched.length }})
       ul.items
         li.item.watched(v-for="r in watched" :key="r.id")
-          img.thumb(:src="'/reel-thumb.png'" alt="Reel" referrerpolicy="no-referrer")
+          span.material-symbols-outlined.thumb-glyph bookmark
           .item-body(v-if="editingId !== r.id")
-            a.title(:href="r.url" target="_blank" rel="noopener" :title="r.url") {{ displayTitle(r) }}
+            a.title(
+              :href="r.url"
+              target="_blank"
+              rel="noopener"
+              :title="r.url"
+              @click="toggleSeen(r)") {{ displayTitle(r) }}
             .url-fallback(v-if="!r.title") {{ shortUrl(r.url) }}
           .item-body.edit(v-else)
             input.edit-url(v-model="editUrl" type="url" placeholder="URL")
@@ -80,8 +90,8 @@
               span.material-symbols-outlined undo
 
     .empty(v-if="!loading && !items.length")
-      span.material-symbols-outlined smart_display
-      p No reels yet. Paste a URL above to save it for later.
+      span.material-symbols-outlined bookmark
+      p No bookmarks yet. Paste a URL above to save it for later.
 </template>
 
 <script>
@@ -89,7 +99,7 @@ import api from '../api.js'
 import Loader from './Loader.vue'
 
 export default {
-  name: 'Reels',
+  name: 'Bookmarks',
   components: { Loader },
   data () {
     return {
@@ -150,9 +160,9 @@ export default {
         if (this.newTitle.trim()) payload.title = this.newTitle.trim()
         const res = await api.post('/api/reels', payload)
         if (res.data.skipped) {
-          this.$toast.info('That reel was already saved')
+          this.$toast.info('That bookmark was already saved')
         } else {
-          this.$toast.success('Reel saved')
+          this.$toast.success('Bookmark saved')
         }
         this.newUrl = ''
         this.newTitle = ''
@@ -186,12 +196,17 @@ export default {
           return
         }
         await api.put(`/api/reels/${r.id}`, fields)
-        this.$toast.success('Reel updated')
+        this.$toast.success('Bookmark updated')
         this.cancelEdit()
         await this.fetch()
       } catch (e) {
         this.$toast.error(e.response?.data?.error || 'Could not update')
       }
+    },
+    // Acción del título: marca visto/pendiente (toggle). Se invoca al click del
+    // <a> que además abre el link en tab nueva (no.preventDefault).
+    toggleSeen (r) {
+      return r.seen ? this.markUnseen(r) : this.markSeen(r)
     },
     async markSeen (r) {
       try {
@@ -215,7 +230,7 @@ export default {
       if (!confirm('Delete this reel?')) return
       try {
         await api.delete(`/api/reels/${r.id}`)
-        this.$toast.success('Reel deleted')
+        this.$toast.success('Bookmark deleted')
         await this.fetch()
       } catch (e) {
         this.$toast.error('Could not delete')
@@ -329,13 +344,17 @@ export default {
     opacity 0.55
     .title
       text-decoration line-through
-.thumb
+.thumb-glyph
   width 48px
   height 64px
   border-radius 4px
-  object-fit cover
   flex-shrink 0
   background rgba(0,0,0,0.3)
+  display flex
+  align-items center
+  justify-content center
+  font-size 28px
+  opacity 0.5
 .item-body
   flex 1
   min-width 0
@@ -350,6 +369,7 @@ export default {
     text-decoration none
     word-break break-word
     overflow-wrap anywhere
+    cursor pointer
     &:hover
       text-decoration underline
   .url-fallback

@@ -35,6 +35,8 @@ El dashboard debe responder en cada refresco: **"tenés N capítulos pendientes 
 12. **Etiquetas de `type` en la UI:** la UI muestra **"Show"** para `type='anime'` y **"Graphic novel"** para `type='manga'`. Los valores internos de `series.type` (`'anime'`, `'manga'`) **no cambian** — son ids estables que persisten en la DB, se usan en queries, dispatch de feeds y clases CSS. El rename es exclusivamente cosmético (Épica 13).
 13. **`source_config` para scraping genérico:** una serie `manga` puede llevar además un `source_config` (JSON, nullable) con `{ selector, url_attr, label_attr, reverse }` que describe cómo extraer los capítulos del HTML del sitio referenciado por `rss_url`. Si está presente, el refresher fetchea el HTML, lo parsea con `cheerio` (sin dependencias nuevas — ya instalado), aplica el selector + extrae los atributos + opcionalmente invierte el orden, y normaliza a `series_items`. Si está ausente, el flujo es el de Épica 12 (detección por host → comivex, o sniff → RSS). El adapter comivex no se rompe (Épica 14).
 14. **Anti-bot en signup vía mCaptcha:** `POST /api/signup` requiere un `mcaptcha_token` válido emitido por `demo.mcaptcha.org` (proof-of-work SHA-256). El backend valida el token contra `/api/v1/pow/siteverify` antes de crear la cuenta. Login no se protege. Env vars: `MCAPTCHA_SITE_KEY` (público), `MCAPTCHA_SECRET_KEY` (server-side, **fail-closed** si falta). Sin tracking, sin cookies (Épica 15).
+15. **"Reels" → "Bookmarks" en la UI (rename cosmético):** la UI muestra **"Bookmarks"** para la sección de reels. Los valores internos (tabla `reels`, `/api/reels`, `reel.mjs`, `REEL_*`, `summary.reelsPending`, `type:'reel'`) **no cambian** — son ids estables. El thumbnail fijo `reel-thumb.png` se reemplaza por un glyph Material Symbols `bookmark` en el card del dashboard y en cada item de la lista. Backend y DB intactos (Épica 16).
+16. **Click en el título abre el link y marca visto:** en el detalle de serie (Show/Graphic novel) y en Bookmarks, el **título sigue siendo un `<a target="_blank">`** pero además **marca el item como visto** al click (toggle visto↔pendiente, mismo efecto que el checkmark, con cascada en series). El botón de checkmark **se conserva** como toggle puro (marcar sin abrir). No se agrega icono `open_in_new` extra en Bookmarks (Épica 16).
 
 ## Stack conservado
 
@@ -62,6 +64,7 @@ Node + Express + SQLite + Vite + Vue 3 + Vue Router + Stylus + Pug + PM2 + GitHu
 | 13 | Reorganización del header + renombrado de tipos | `[DONE]` | [epics/13-header-menu-and-type-rename.md](epics/13-header-menu-and-type-rename.md) |
 | 14 | Scraping genérico con config de usuario | `[DONE]` | [epics/14-custom-source-config.md](epics/14-custom-source-config.md) |
 | 15 | Protección de signup con mCaptcha (PoW) | `[DONE]` | [epics/15-mcaptcha-signup.md](epics/15-mcaptcha-signup.md) |
+| 16 | Reels → Bookmarks (UI) + click en el título abre y marca visto | `[DONE]` | [epics/16-bookmarks-and-click-to-mark.md](epics/16-bookmarks-and-click-to-mark.md) |
 
 Estado de marcas: `[DONE]` completada · `[IN PROGRESS]` en curso · `[BLOCKED]` bloqueada · `[PENDING]` pendiente.
 

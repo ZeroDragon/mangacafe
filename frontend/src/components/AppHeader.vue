@@ -11,8 +11,8 @@ header.app-header
       span.material-symbols-outlined library_books
       span.label Series
     router-link(:to="{ path: '/reels' }")
-      span.material-symbols-outlined smart_display
-      span.label Reels
+      span.material-symbols-outlined bookmark
+      span.label Bookmarks
   .spacer
   button.add(@click="$router.push('/series/new')")
     span.material-symbols-outlined add
